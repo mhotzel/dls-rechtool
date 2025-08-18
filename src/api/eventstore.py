@@ -18,6 +18,7 @@ class BaseEvent:
         self.data = data
 
     def to_dict(self):
+        """Gibt das Objekt als Dictionary aus, um es z.B. einfacher in ein JSON-Objekt umformen zu lassen."""
         return {
             'id': self.id,
             'specversion': self.specversion,
