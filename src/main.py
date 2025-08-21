@@ -87,28 +87,18 @@ if __name__ == '__main__':
     # main()
     
     xmlfile = open(PurePath("C:\\", "Users", "MatthiasHotzelbankon",
-                               "Documents", "Projekte", "dls-rechtool", "factur-x.xml")).read()
+                               "Documents", "Projekte", "dls-rechtool", "example-input", "factur-x.xml")).read()
     rdr = FakturXInvoiceReader(xmlfile)
 
-    evt = BaseEvent(
-        id=str(uuid4()),
-        subject=rdr.getInvoiceId(),
-        type="de.dls.invoicetracking.edeka-invoice-received",
-        data=rdr.to_dict()['invoice-head']
-    )
-
-    evtStore = SqliteEventStore(
-        PurePath('C:\\', 'Users', 'MatthiasHotzelbankon', 'Documents',
-                 'Projekte', 'dls-rechtool', 'rechtooldb.sqlite')
-    )
-    evtStore.save_event(evt)
-
-    for rpos in rdr.to_dict()['invoice-positions']:
-        evt = BaseEvent(
-            id=str(uuid4()),
-            subject=rdr.getInvoiceId(),
-            type="de.dls.invoicetracking.edeka-invoice-position-received",
-            data=rpos
-        )
-
-        evtStore.save_event(evt)
+    print(f"Rechnungsnummer: {rdr.invoiceNumber}")
+    print(f"Rechnungstyp:    {rdr.invoiceType}")
+    print(f"Rechnungsdatum:  {rdr.invoiceDate}")
+    print(f"Verkäufer Name:  {rdr.sellerName}")
+    print(f"Verkäufer ID:    {rdr.sellerId}")
+    print(f"Verkäufer GlobalID: {rdr.sellerGlobalId}")
+    print("-----------------------------------------")
+    print(f"Rechnungspositionen:")
+    for pos in rdr.invoicePositions:
+        print(f"  - {pos.idx} - {pos.lineId} - {pos.sellerAssignedId} - {pos.globalproductId} - {pos.name}")
+        print(f"  - {pos.grossPriceProductTradePrice} - {pos.netPriceProductTradePrice} - {pos.billedQuantity} - {pos.lineTotalAmount}")
+        print(f"  - {pos.applicableTradeTax}")

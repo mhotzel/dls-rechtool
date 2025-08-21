@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from typing import Sequence
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import Element
 from datetime import datetime
@@ -74,11 +76,31 @@ class KeyMapping:
         'udt': 'urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100'
     }
 
-    def __init__(self, xmlpath: str, optional: bool = False):
-        self.xmlpath = xmlpath
+    def __init__(self, xmldoc: str, optional: bool = True):
+        self.xmlpath = xmldoc
         self.optional = optional
 
-    def getElement(self, element: Element) -> Element | None:
+    def getElementAsFloat(self, element: Element) -> float | None:
+        """Extrahiert ein Element als float"""
+        result = element.find(self.xmlpath, namespaces=self.namespaces)
+        if result is None and self.optional == False:
+            raise ValueError(
+                f"element not found on path '{self.xmlpath}'"
+            )
+
+        return float(result.text) if result is not None else None
+
+    def getElementAsInt(self, element: Element) -> int | None:
+        """Extrahiert ein Element als int"""
+        result = element.find(self.xmlpath, namespaces=self.namespaces)
+        if result is None and self.optional == False:
+            raise ValueError(
+                f"element not found on path '{self.xmlpath}'"
+            )
+
+        return int(result.text) if result is not None else None
+
+    def getElement(self, element: Element) -> str | None:
         """Extrahiert ein Element """
         result = element.find(self.xmlpath, namespaces=self.namespaces)
         if result is None and self.optional == False:
@@ -86,7 +108,17 @@ class KeyMapping:
                 f"element not found on path '{self.xmlpath}'"
             )
 
-        return result
+        return result.text if result is not None else None
+
+    def getAttribute(self, element: Element, attribute: str) -> str | None:
+        """Extrahiert ein Attribut eines Elements"""
+        result = element.find(self.xmlpath, namespaces=self.namespaces)
+        if result is None and self.optional == False:
+            raise ValueError(
+                f"attribute '{attribute}' not found on path '{self.xmlpath}'"
+            )
+       
+        return result.get(attribute) if result is not None else None
 
     def getAllElements(self, element: Element) -> list[Element] | None:
         """Extrahiert alle Elemente"""
@@ -99,13 +131,45 @@ class KeyMapping:
         return result
 
 
-POSITION_MAPPING = {
-    'pos_nr': KeyMapping('.//ram:AssociatedDocumentLineDocument/ram:LineID'),
-    'gtin':  KeyMapping('.//ram:SpecifiedTradeProduct/ram:GlobalID', optional=True),
-    'suppl_prod_id': KeyMapping('.//ram:SpecifiedTradeProduct/ram:SellerAssignedID'),
-    'prod_name': KeyMapping('.//ram:SpecifiedTradeProduct/ram:Name'),
-    'order_id': KeyMapping('.//ram:SpecifiedLineTradeAgreement/ram:BuyerOrderReferencedDocument/ram:LineID', optional=True)
-}
+@dataclass
+class ApplicableTradeTax:
+    typeCode: str
+    categoryCode: str
+    rateApplicablePercent: float | None = None
+
+
+@dataclass
+class ProductTradePrice:
+    type: str
+    chargeAmount: float | None = None
+    basisQuantity: float | None = None
+    unitCode: str | None = None
+
+@dataclass
+class FakturXInvoicePosition:
+    idx: int
+    lineId: str  # ram:AssociatedDocumentLineDocument/ram:LineID / MUSS
+    # ram:SpecifiedTradeProduct/ram:GlobalID / und SchemaId / Kann
+    globalproductId: tuple[str, str] | None = None
+    # ram:SpecifiedTradeProduct/ram:SellerAssignedID / Optional
+    sellerAssignedId: str | None = None
+    # ram:SpecifiedTradeProduct/ram:BuyerAssignedID / Optional
+    buyerAssignedId: str | None = None
+    name: str | None = None  # ram:SpecifiedTradeProduct/ram:Name / MUSS
+
+    # ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice
+    grossPriceProductTradePrice: ProductTradePrice | None = None
+
+    # ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice
+    netPriceProductTradePrice: ProductTradePrice | None = None
+
+    billedQuantity: float | None = None
+    # ram:SpecifiedLineTradeDelivery/ram:BilledQuantity/@unitCode / Optional
+    billedQuantityUnitCode: str | None = None
+    # ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax / MUSS
+    applicableTradeTax: str | None = None
+    # ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount / MUSS
+    lineTotalAmount: float | None = None
 
 
 class FakturXInvoiceReader():
@@ -120,270 +184,148 @@ class FakturXInvoiceReader():
     def __init__(self, invoiceData: str):
         self.root = ET.fromstring(invoiceData)
 
-    def isValidEN16931(self):
-        """Prueft, ob sich das Dokument selbst als konform zur Spezifikation
-        urn:cen.eu:en16931:2017 betrachtet."""
+        self.invoice = self.root.find(
+            'rsm:ExchangedDocumentContext/ram:GuidelineSpecifiedDocumentContextParameter/ram:ID', self.namespaces)
+        if self.root is None:
+            raise ValueError("not a valid Faktur-X invoice")
 
-        mapping = KeyMapping(
-            './/rsm:ExchangedDocumentContext/ram:GuidelineSpecifiedDocumentContextParameter/ram:ID')
-        try:
-            res = mapping.getElement(self.root)
-            if res.text == 'urn:cen.eu:en16931:2017':
-                return True
-        except ValueError as ve:
-            return False
-
-    def getSellerTradeId(self) -> str:
-        """Liefert die eindeutige ID des Lieferanten"""
-        elem = KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:ID').getElement(self.root)
+    @property
+    def invoiceNumber(self) -> str:
+        """Liefert die Rechnungsnummer"""
+        elem = self.root.find('rsm:ExchangedDocument/ram:ID', self.namespaces)
         return elem.text
 
-    def getSellerTradeName(self) -> str:
-        """Liefert den Namen des Lieferanten"""
-        elem = KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:Name').getElement(self.root)
+    @property
+    def invoiceType(self) -> str:
+        """Liefert den Typ der Rechnung"""
+        elem = self.root.find(
+            'rsm:ExchangedDocument/ram:TypeCode', self.namespaces)
         return elem.text
 
-    def getSellerTaxRegistration(self) -> str:
-        """Steuer-ID des Lieferanten"""
-        taxId = KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedTaxRegistration/ram:ID').getElement(self.root)
-        return taxId.text
+    @property
+    def invoiceDate(self) -> str:
+        """Liefert das Rechnungsdatum"""
+        elem = self.root.find(
+            'rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString', self.namespaces)
+        return datetime.strptime(elem.text, '%Y%m%d').date()
 
-    def getSellerTaxRegistrationType(self) -> str:
-        """Steuer-ID des Lieferanten. 'VA' = UStID, 'FC' = Steuernummer"""
-        taxId = KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:SpecifiedTaxRegistration/ram:ID').getElement(self.root)
-        taxType = taxId.get('schemeID', '')
-        return taxType
+    @property
+    def sellerName(self) -> str:
+        """Liefert den Namen des Verkäufers. Muss laut Standard immer vorhanden sein.
+        BT-27"""
+        elem = self.root.find(
+            'rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:Name', self.namespaces)
+        if elem is None:
+            raise ValueError("Seller name not found")
+        return elem.text
 
-    def getCustomerId(self) -> str:
-        """Kundennummer bei Lieferanten"""
-        customerId = KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty/ram:ID').getElement(self.root)
-        return customerId.text
+    @property
+    def sellerId(self) -> str:
+        """Liefert die ID des Verkäufers. Muss laut Standard nicht vorhanden sein.
+        Alternativ kann auch die GlobalID des Verkäufers verwendet werden, die aber auch nicht zwingend vorhanden sein muss.
+        BT-29
+        """
+        elem = self.root.find(
+            'rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:ID', self.namespaces)
+        return elem.text if elem is not None else None
 
-    def getInvoiceId(self) -> str:
-        """Ermittelt die Rechnungsnummer"""
+    @property
+    def sellerGlobalId(self) -> tuple:
+        """Liefert die GlobalID des Verkäufers und die dazugehörige SchemaID, welche die Herkunft der GlobalID beschreibt. Muss laut Standard nicht vorhanden sein.
+        Alternativ kann auch die ID des Verkäufers verwendet werden, die aber auch nicht zwingend vorhanden sein muss.
+        Ist die GlobalID vorhanden, ist sie eindeutig und kann auch für die Identifikation des Verkäufers verwendet werden.
+        BT-29-0, BT-29-1
+        """
+        elem = self.root.find(
+            'rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeAgreement/ram:SellerTradeParty/ram:GlobalID', self.namespaces)
+        schemaId = elem.get('schemeID') if elem is not None else None
+        if elem is not None:
+            return (elem.text, schemaId)
+        return (None, None)
 
-        mapping = KeyMapping('.//rsm:ExchangedDocument/ram:ID')
-        return mapping.getElement(self.root).text
+    @property
+    def invoicePositions(self) -> Sequence[FakturXInvoicePosition]:
+        """Liefert die Positionen der Rechnung"""
 
-    def getTypeCode(self):
-        """Ermittelt den Typ des Dokuments. Siehe auch die Uebersicht gemaess
-        Dictionary 'DOCUMENTYPECODES'"""
+        lineIdMapping = KeyMapping(
+            'ram:AssociatedDocumentLineDocument/ram:LineID', optional=False)
+        globalproductIdMapping = KeyMapping(
+            'ram:SpecifiedTradeProduct/ram:GlobalID')
+        sellerAssignedIdMapping = KeyMapping(
+            'ram:SpecifiedTradeProduct/ram:SellerAssignedID')
+        buyerAssignedIdMapping = KeyMapping(
+            'ram:SpecifiedTradeProduct/ram:BuyerAssignedID')
+        prodNameMapping = KeyMapping('ram:SpecifiedTradeProduct/ram:Name')
+        grossPriceChargeAmountMapping = KeyMapping(
+            'ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:ChargeAmount')
+        grossPriceBasisQuantityMapping = KeyMapping(
+            'ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:BasisQuantity')
+        netPriceChargeAmountMapping = KeyMapping(
+            'ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:ChargeAmount', optional=False)
+        netPriceBasisQuantityMapping = KeyMapping(
+            'ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:BasisQuantity')
+        billedQuantityMapping = KeyMapping(
+            'ram:SpecifiedLineTradeDelivery/ram:BilledQuantity', optional=True)
 
-        mapping = KeyMapping('.//rsm:ExchangedDocument/ram:TypeCode')
-        return mapping.getElement(self.root).text
+        applicableTradeTaxTypeCodeMapping = KeyMapping(
+            'ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:TypeCode', optional=False)
 
-    def getInvoiceDate(self) -> datetime.date:
-        """Ermittelt das Rechnungsdatum"""
-        return datetime.strptime(
-            KeyMapping('.//rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString').getElement(self.root).text, "%Y%m%d").date().isoformat()
+        applicableTradeTaxCategoryCodeMapping = KeyMapping(
+            'ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:CategoryCode', optional=False)
 
-    def getInvoiceCurrencyCode(self) -> str:
-        """Rechnungswährung"""
-        currencyCode = KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:InvoiceCurrencyCode').getElement(self.root)
-        return currencyCode.text
+        applicableTradeTaxRateApplicablePercentMapping = KeyMapping(
+            'ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:RateApplicablePercent', optional=True)
 
-    def getTradeTax(self) -> list[dict]:
-        """Steuerbeträge"""
-        taxes = KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax').getAllElements(self.root)
-        taxResult = []
-        for tax in taxes:
-            result = {}
-            res = KeyMapping('.//ram:CalculatedAmount').getElement(tax)
-            result['tax-amount'] = float(res.text)
-
-            res = KeyMapping('.//ram:TypeCode').getElement(tax)
-            result['tax-type-code'] = res.text
-
-            res = KeyMapping('.//ram:BasisAmount').getElement(tax)
-            result['tax-basis-amount'] = float(res.text)
-
-            res = KeyMapping('.//ram:CategoryCode').getElement(tax)
-            result['tax-cat-code'] = res.text
-
-            res = KeyMapping('.//ram:RateApplicablePercent').getElement(tax)
-            result['tax-percent'] = float(res.text)
-
-            taxResult.append(result)
-
-        return taxResult
-
-    def getBillingPeriod(self) -> dict:
-        """Rechnungsperiode"""
-        billingDateStart = KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString').getElement(self.root)
-        billingDateEnd = KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:BillingSpecifiedPeriod/ram:EndDateTime/udt:DateTimeString').getElement(self.root)
-
-        return {
-            'billing-period-start': datetime.strptime(billingDateStart.text, '%Y%m%d').date().isoformat(),
-            'billing-period-end': datetime.strptime(billingDateEnd.text, '%Y%m%d').date().isoformat()
-        }
-
-    def getInvoiceSummary(self) -> dict:
-        """Endebetraege der Rechnung"""
-        lineTotalAmount = float(KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:LineTotalAmount').getElement(self.root).text)
-        taxBasisTotalAmount = float(KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:TaxBasisTotalAmount').getElement(self.root).text)
-        taxTotalAmount = KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:TaxTotalAmount').getElement(self.root)
-        currency = taxTotalAmount.get('currencyID', '')
-        roundingAmount = float(KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:RoundingAmount').getElement(self.root).text)
-        # Gesamtbetrag einschl. Steuern
-        grandTotalAmount = float(KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:GrandTotalAmount').getElement(self.root).text)
-        # Vorauszahlungen
-        totalPrepaidAmount = float(KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:TotalPrepaidAmount').getElement(self.root).text)
-        # Restbetrag
-        duePayableAmount = float(KeyMapping(
-            './/rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:DuePayableAmount').getElement(self.root).text)
-
-        return {
-            'line-total-amount': lineTotalAmount,
-            'tax-basis-total-amount': taxBasisTotalAmount,
-            'tax-total-amount': float(taxTotalAmount.text),
-            'currency': currency,
-            'rounding-amount': roundingAmount,
-            'grand-total-amount': grandTotalAmount,
-            'total-prepaid-amount': totalPrepaidAmount,
-            'due-payable-amount': duePayableAmount
-        }
-
-    def getPositions(self) -> list[dict]:
-        """Ermittelt die Positionen"""
+        lineTotalAmountMapping = KeyMapping(
+            'ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount', optional=False)
 
         positions = []
-        transaction_mapping = KeyMapping('.//rsm:SupplyChainTradeTransaction')
-        transaction = transaction_mapping.getElement(self.root)
-        allPositions = KeyMapping(
-            './/ram:IncludedSupplyChainTradeLineItem').getAllElements(transaction)
-
-        for idx, pos in enumerate(allPositions, start=1):
-            result = {}
-            pos_nr = KeyMapping(
-                './/ram:AssociatedDocumentLineDocument/ram:LineID').getElement(pos)
-            result['line-nr'] = int(pos_nr.text)
-
-            gtin = KeyMapping(
-                './/ram:SpecifiedTradeProduct/ram:GlobalID', optional=True).getElement(pos)
-            if gtin is not None:
-                result['gtin'] = gtin.text
-
-            suppl_prod_id = KeyMapping(
-                './/ram:SpecifiedTradeProduct/ram:SellerAssignedID').getElement(pos)
-            if suppl_prod_id is not None:
-                result['suppl-prod-id'] = suppl_prod_id.text
-
-            prod_name = KeyMapping(
-                './/ram:SpecifiedTradeProduct/ram:Name').getElement(pos)
-            if prod_name is not None:
-                result['prod-name'] = prod_name.text
-
-            order_id = KeyMapping(
-                './/ram:SpecifiedLineTradeAgreement/ram:BuyerOrderReferencedDocument/ram:LineID', optional=True).getElement(pos)
-            if order_id is not None:
-                result['order-id'] = order_id.text
-
-            # Informativer Listenpreis als Einzelpreis.
-            grossPrice = KeyMapping(
-                './/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:ChargeAmount').getElement(pos)
-            result['gross-price'] = float(grossPrice.text)
-
-            # BasisQuantity“ BT-149-0 sollte als Preiseinheit für den Listenpreis verstanden werden
-            basisQuantity = KeyMapping(
-                './/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:BasisQuantity').getElement(pos)
-            result['basis-quantity'] = float(basisQuantity.text)
-
-            # Unit Codes pro Rechnungszeile wie 'XCT':
-            # https://easyfirma.net/e-rechnung/xrechnung/codes#elementor-toc__heading-anchor-17
-            quantityUnitCode = KeyMapping(
-                './/ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice/ram:BasisQuantity').getElement(pos)
-            result['basis-quantity-unit-code'] = quantityUnitCode.get(
-                'unitCode', '')
-
-            # Normaler Nettopreis. Das Element „BasisQuantity“ BT-149-0 sollte als Preiseinheit für den Nettopreis verstanden werden
-            netPrice = KeyMapping(
-                './/ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice/ram:ChargeAmount').getElement(pos)
-            result['net-price'] = float(netPrice.text)
-
-            # Liefermenge
-            billedQuantity = KeyMapping(
-                './/ram:SpecifiedLineTradeDelivery/ram:BilledQuantity').getElement(pos)
-            result['billed-quantity'] = float(billedQuantity.text)
-            result['billed-quantity-unit-code'] = billedQuantity.get(
-                'unitCode', '')
-
-            # Steuer
-            # VAT = Umsatzsteuer
-            steuertyp = KeyMapping(
-                './/ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:TypeCode').getElement(pos)
-            result['tax-type'] = steuertyp.text
-
-            # 'S' = Regel-Umsatzsteuersatz
-            steuerkategorie = KeyMapping(
-                './/ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:CategoryCode').getElement(pos)
-            result['tax-cat'] = steuerkategorie.text
-
-            # 'S' = Regel-Umsatzsteuersatz
-            steuersatz = KeyMapping(
-                './/ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax/ram:RateApplicablePercent').getElement(pos)
-            result['tax-rate'] = float(steuersatz.text)
-
-            rechnungsperiode_start = KeyMapping(
-                './/ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString', optional=True).getElement(pos)
-            if rechnungsperiode_start is not None:
-                result['billing-period-start'] = datetime.strptime(
-                    rechnungsperiode_start.text, "%Y%m%d").date().isoformat()
-
-            rechnungsperiode_ende = KeyMapping(
-                './/ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:EndDateTime/udt:DateTimeString', optional=True).getElement(pos)
-            if rechnungsperiode_ende is not None:
-                result['billing-period-end'] = datetime.strptime(
-                    rechnungsperiode_ende.text, '%Y%m%d').date().isoformat()
-
-            zeilensumme = KeyMapping(
-                './/ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount').getElement(pos)
-            result['line-total-amount'] = float(zeilensumme.text)
-
-            issuer_prod_id = KeyMapping(
-                './/ram:SpecifiedLineTradeSettlement/ram:AdditionalReferencedDocument/ram:IssuerAssignedID', optional=True).getElement(pos)
-            if issuer_prod_id is not None:
-                result['issuer-prod-id'] = issuer_prod_id.text
-
-            issuer_prod_type_code = KeyMapping(
-                './/ram:SpecifiedLineTradeSettlement/ram:AdditionalReferencedDocument/ram:TypeCode', optional=True).getElement(pos)
-            if issuer_prod_type_code is not None:
-                result['issuer-prod-type-code'] = issuer_prod_type_code.text
-
-            positions.append(result)
-
+        posList = self.root.findall(
+            'rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem', self.namespaces)
+        for idx, pos in enumerate(posList):
+            # Wichtig: Die Positionsnummer ist zumindest bei Fleischerei Kurz NICHT eindeutig,
+            # obwohl das m.E. so Vorschrift ist! Deswegen ein separater Positionszähler
+            positions.append(
+                FakturXInvoicePosition(
+                    idx=idx,
+                    lineId=lineIdMapping.getElement(pos),
+                    globalproductId=(globalproductIdMapping.getElement(
+                        pos), globalproductIdMapping.getAttribute(pos, 'schemeID')),
+                    sellerAssignedId=sellerAssignedIdMapping.getElement(pos),
+                    buyerAssignedId=buyerAssignedIdMapping.getElement(pos),
+                    name=prodNameMapping.getElement(pos),
+                    grossPriceProductTradePrice=ProductTradePrice(
+                        type='grossPrice',
+                        chargeAmount=grossPriceChargeAmountMapping.getElementAsFloat(
+                            pos),
+                        basisQuantity=grossPriceBasisQuantityMapping.getElementAsFloat(
+                            pos),
+                        unitCode=grossPriceBasisQuantityMapping.getAttribute(
+                            pos, 'unitCode')
+                    ),
+                    netPriceProductTradePrice=ProductTradePrice(
+                        type='netPrice',
+                        chargeAmount=netPriceChargeAmountMapping.getElementAsFloat(
+                            pos),
+                        basisQuantity=netPriceBasisQuantityMapping.getElementAsFloat(
+                            pos),
+                        unitCode=netPriceBasisQuantityMapping.getAttribute(
+                            pos, 'unitCode')
+                    ),
+                    billedQuantity=billedQuantityMapping.getElementAsFloat(
+                        pos),
+                    billedQuantityUnitCode=billedQuantityMapping.getAttribute(
+                        pos, 'unitCode'),
+                    applicableTradeTax=ApplicableTradeTax(
+                        typeCode=applicableTradeTaxTypeCodeMapping.getElement(
+                            pos),
+                        categoryCode=applicableTradeTaxCategoryCodeMapping.getElement(
+                            pos),
+                        rateApplicablePercent=applicableTradeTaxRateApplicablePercentMapping.getElement(
+                            pos)
+                    ),
+                    lineTotalAmount=lineTotalAmountMapping.getElementAsFloat(
+                        pos)
+                )
+            )
         return positions
-
-    def to_dict(self):
-        """Erzeugt aus dem Rechnungsobjekt in Dictionary, welches z.B. dann in ein JSON-Objekt verpackt werden kann"""
-
-        return {
-            'invoice-head': {
-                'customer-id': self.getCustomerId(),
-                'invoice-id': self.getInvoiceId(),
-                'invoice-type-code': self.getTypeCode(),
-                'invoice-date': self.getInvoiceDate(),
-                'seller-trade-id': self.getSellerTradeId(),
-                'seller-trade-name': self.getSellerTradeName(),
-                'billing-period': self.getBillingPeriod(),
-                'seller-tax-registration': self.getSellerTaxRegistration(),
-                'seller-tax-registration-type': self.getSellerTaxRegistrationType()
-            },
-            'invoice-positions': self.getPositions(),
-            'tax': self.getTradeTax(),
-            'invoice-summary': self.getInvoiceSummary()
-        }
