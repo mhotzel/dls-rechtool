@@ -172,7 +172,7 @@ class FakturXInvoicePosition:
     lineTotalAmount: float | None = None
 
 
-class FakturXInvoiceReader():
+class FakturXInvoice():
     """Liest eine Faktur-X-Datei ein"""
 
     namespaces = {
@@ -329,3 +329,16 @@ class FakturXInvoiceReader():
                 )
             )
         return positions
+
+    def __repr__(self):
+        result = ""
+        result += f"FakturXInvoice(invoiceType={self.invoiceType})"
+        result += f", invoiceType={self.invoiceType})"
+        result += f", invoiceNumber={self.invoiceNumber})"
+        result += f", invoiceDate={repr(self.invoiceDate)})"
+        result += f", sellerName={self.sellerName})"
+        result += f", sellerId={self.sellerId})"
+        result += f", sellerGlobalId={self.sellerGlobalId})"
+        result += f", invoicePositions={self.invoicePositions}))"
+
+        return result

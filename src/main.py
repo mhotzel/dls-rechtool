@@ -10,7 +10,7 @@ from ui.leftbar import LeftBar
 from ui.rightbar import RightBar
 from api.eventstore import BaseEvent
 from api.sqlite_eventstore import SqliteEventStore
-from domain.fakturx_invoice_reader import FakturXInvoiceReader
+from domain.fakturx_invoice import FakturXInvoice
 
 
 class MainWindow(QMainWindow):
@@ -87,18 +87,9 @@ if __name__ == '__main__':
     # main()
     
     xmlfile = open(PurePath("C:\\", "Users", "MatthiasHotzelbankon",
-                               "Documents", "Projekte", "dls-rechtool", "example-input", "factur-x.xml")).read()
-    rdr = FakturXInvoiceReader(xmlfile)
-
-    print(f"Rechnungsnummer: {rdr.invoiceNumber}")
-    print(f"Rechnungstyp:    {rdr.invoiceType}")
-    print(f"Rechnungsdatum:  {rdr.invoiceDate}")
-    print(f"Verkäufer Name:  {rdr.sellerName}")
-    print(f"Verkäufer ID:    {rdr.sellerId}")
-    print(f"Verkäufer GlobalID: {rdr.sellerGlobalId}")
-    print("-----------------------------------------")
-    print(f"Rechnungspositionen:")
-    for pos in rdr.invoicePositions:
-        print(f"  - {pos.idx} - {pos.lineId} - {pos.sellerAssignedId} - {pos.globalproductId} - {pos.name}")
-        print(f"  - {pos.grossPriceProductTradePrice} - {pos.netPriceProductTradePrice} - {pos.billedQuantity} - {pos.lineTotalAmount}")
-        print(f"  - {pos.applicableTradeTax}")
+                               "Documents", "Projekte", "dls-rechtool", "example-input", "edeka_factur-x.xml")).read()
+    rdr = FakturXInvoice(xmlfile)
+    
+    with open(PurePath("C:\\", "Users", "MatthiasHotzelbankon",
+                               "Documents", "Projekte", "dls-rechtool", "example-input", "edeka_factur-x.log"), "w") as f:
+        f.write(repr(rdr))
