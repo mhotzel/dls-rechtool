@@ -2,23 +2,25 @@ from os import path
 import json
 from pathlib import PurePath
 import sys
-from uuid import uuid4
+import uuid
 from PySide6.QtWidgets import QMainWindow, QApplication, QMenu, QWidget, QHBoxLayout, QPushButton, QSizePolicy
 from PySide6.QtGui import QIcon, QScreen, QAction, QKeySequence
 from PySide6.QtCore import QSize
+from application.application_context import ApplicationContext
 from ui.leftbar import LeftBar
-from ui.rightbar import RightBar
-from api.eventstore import BaseEvent
+from ui.mainpart import MainPart
+from api.eventstore import Event
 from api.sqlite_eventstore import SqliteEventStore
 from domain.fakturx_invoice import FakturXInvoice
 
 
 class MainWindow(QMainWindow):
 
-    def __init__(self, app: QApplication):
+    def __init__(self, app: QApplication, appContext: ApplicationContext):
         super().__init__()
         self.app = app
-        self.setWindowTitle("DLS Rechnungstool")
+        self.appContext = appContext
+        self.setWindowTitle("DLS - Preise und Mengen")
         self._buildGui()
         self._addMenus()
 
@@ -34,15 +36,16 @@ class MainWindow(QMainWindow):
     def _buildGui(self):
         self.setStyleSheet("""
             QWidget { background: #f3f3f3; }
-            QPushButton { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; background-color: white; }
-            QPushButton:hover { background: #eaeaea; }
-            QFrame {border: 1px solid darkgrey; border-radius: 5px}
+            QPushButton { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; background-color: rgb(142,190,68); font-weight: bold; color: white; }
+            QPushButton:hover { background: #eaeaea; color: black; }
+            QFrame {border: 1px solid; border-radius: 5px; background-color: white;}
         """)
+
         _centralWidget = QWidget()
         self.setCentralWidget(_centralWidget)
 
-        _leftBar = LeftBar(_centralWidget)
-        _rightBar = RightBar(_centralWidget)
+        _leftBar = LeftBar(_centralWidget, self.appContext)
+        _rightBar = MainPart(_centralWidget, self.appContext)
 
         _leftBar.setSizePolicy(QSizePolicy.Policy.Fixed,
                                QSizePolicy.Policy.Expanding)
@@ -52,7 +55,6 @@ class MainWindow(QMainWindow):
         _layout = QHBoxLayout(_centralWidget)
         _layout.addWidget(_leftBar)
         _layout.addWidget(_rightBar)
-
         _centralWidget.setLayout(_layout)
 
     def show(self):
@@ -75,21 +77,15 @@ def _createIcons():
 
 
 def main():
+    appContext = ApplicationContext()
+    appContext.event_store
     app = QApplication(sys.argv)
     app.setWindowIcon(_createIcons())
-    mw = MainWindow(app=app)
+    mw = MainWindow(app=app, appContext=appContext)
     mw.show()
 
     sys.exit(app.exec())
 
 
 if __name__ == '__main__':
-    # main()
-    
-    xmlfile = open(PurePath("C:\\", "Users", "MatthiasHotzelbankon",
-                               "Documents", "Projekte", "dls-rechtool", "example-input", "edeka_factur-x.xml")).read()
-    rdr = FakturXInvoice(xmlfile)
-    
-    with open(PurePath("C:\\", "Users", "MatthiasHotzelbankon",
-                               "Documents", "Projekte", "dls-rechtool", "example-input", "edeka_factur-x.log"), "w") as f:
-        f.write(repr(rdr))
+    main()

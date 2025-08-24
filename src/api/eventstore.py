@@ -1,38 +1,45 @@
 
-from datetime import datetime
-from datetime import timezone
-from typing import Protocol
+from abc import abstractmethod
+from typing import Protocol, Sequence
+import uuid
 
-
-class BaseEvent:
-    """Basisklasse gemäß CloudEvents-Standard"""
-
-    def __init__(self, id: str, subject: str, type: str, data: dict):
-        self.id = id
-        self.specversion = '1.0'
-        self.type = type
-        self.source = "dls-rechtool"
-        self.subject = subject
-        self.datacontenttype = "application/json"
-        self.time = datetime.now(timezone.utc)
-        self.data = data
-
-    def to_dict(self):
-        """Gibt das Objekt als Dictionary aus, um es z.B. einfacher in ein JSON-Objekt umformen zu lassen."""
-        return {
-            'id': self.id,
-            'specversion': self.specversion,
-            'type': self.type,
-            'source': self.source,
-            'subject': self.subject,
-            'datacontenttype': self.datacontenttype,
-            'time': self.time.isoformat(),
-            'data': self.data
-        }
+from api.event import Event
 
 
 class EventStore(Protocol):
     """Dient der Speicherung von Events"""
 
-    def save_event(evt: BaseEvent):
-        """Stores an Event"""
+    # keine Versionsprüfung (append regardless)
+    EXPECTED_VERSION_NOCHECK = None
+    EXPECTED_VERSION_NEW = -1  # Subject MUSS neu sein (keine Events vorhanden)
+
+    @abstractmethod
+    def add_event(self, evt: Event, expected_version: int | None) -> None:
+        """Fuegt ein Event dem Store hinzu.
+        event: Das zu speichernde Event
+        expected_version:
+           - None  => keine Versionsprüfung (append regardless)
+           - int   => aktuelle Subject-Version MUSS == expected_version sein
+                      (zur Abbildung optimistischer Concurrency; so wird verhindert, 
+                      dass ein anderer Prozess zwischenzeitlich unbemerkt bereits
+                      ein Event der gleichen Nummer geschrieben hat)
+           - -1    => Subject MUSS neu sein (keine Events vorhanden)
+        """
+
+    @abstractmethod
+    def readEventsByType(self, evtType: str, from_position: int = 1, limit: int | None = None) -> Sequence[Event]:
+        """Ermittelt alle Events zum angegebenen Event Typ.
+        from_position => Ab welcher Position soll gelesen werden?
+        limit         => Anzahl zu lesender Events
+        """
+
+    @abstractmethod
+    def readEventById(self, id: uuid.UUID) -> Event:
+        """Liefert das Event mit einer bestimmten ID"""
+
+    @abstractmethod
+    def readSubject(self, subject: str, from_version: int = 1, limit: int | None = None):
+        """Liest alle Events mit dem uebergebenen Subject, also einen 'Stream'.
+        from_version  => Ab welcher Version soll gelesen werden?
+        limit         => Anzahl zu lesender Events
+        """

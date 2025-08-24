@@ -203,7 +203,7 @@ class FakturXInvoice():
         return elem.text
 
     @property
-    def invoiceDate(self) -> str:
+    def invoiceDate(self) -> datetime.date:
         """Liefert das Rechnungsdatum"""
         elem = self.root.find(
             'rsm:ExchangedDocument/ram:IssueDateTime/udt:DateTimeString', self.namespaces)
