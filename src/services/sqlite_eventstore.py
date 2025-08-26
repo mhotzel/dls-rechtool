@@ -1,8 +1,7 @@
 from typing import Sequence
-from api.eventstore import EventStore
-from api.event import Event
+from services.eventstore import EventStore
+from services.event import Event
 import sqlite3
-from contextlib import closing
 import uuid
 
 SQL = ["""

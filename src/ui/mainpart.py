@@ -1,11 +1,11 @@
 from PySide6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QSizePolicy, QFrame
 
-from application.application_context import ApplicationContext
-
+from application.event_dispatcher import EventDispatcher
 
 class MainPart(QFrame):
-    def __init__(self, parent, appContext: ApplicationContext):
+    def __init__(self, parent, event_dispatcher: EventDispatcher):
         super().__init__(parent, lineWidth=1)
+        self.event_dispatcher = event_dispatcher
         self._buildUi()
 
     def _buildUi(self):
