@@ -1,9 +1,13 @@
+from contextlib import closing
 from os import path
+import os
+from pathlib import Path
+import sys
 from ui.leftbar import LeftBar
 from ui.mainpart import MainPart
 
 from PySide6.QtCore import QSize
-from PySide6.QtGui import QAction, QKeySequence, QScreen, QIcon
+from PySide6.QtGui import QAction, QKeySequence, QScreen, QIcon, QPalette, QColor, QColorConstants
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QMenu, QSizePolicy, QWidget
 
 from application.event_dispatcher import EventDispatcher
@@ -12,10 +16,11 @@ class MainWindow(QMainWindow):
 
     def __init__(self, eventDispatcher: EventDispatcher):
         super().__init__()
-        self.setWindowTitle("DLS - Preise und Mengen")
+        self.setWindowTitle("DLS - Rechnungs- und Lieferantendatenerfassung")
         self.event_dispatcher: EventDispatcher = eventDispatcher
         self._buildGui()
         self._addMenus()
+        self.setWindowIcon(self._createIcons())
 
     def _createIcons(self):
         my_icon = QIcon()
@@ -37,19 +42,20 @@ class MainWindow(QMainWindow):
         fileMenu.addAction(quitAction)
         self.menuBar().addMenu(fileMenu)
 
+    def readStyleSheet(self) -> str:
+        """liest das StyleSheet als String ein"""
+        file_path = Path(os.path.abspath(__file__)).parent.joinpath('stylesheet.css')
+        with closing(open(file_path)) as infile:
+            styles = infile.read()
+        return styles
+
     def _buildGui(self):
-        self.setStyleSheet("""
-            QWidget { background: #f3f3f3; font-family: calibri, arial, helvetica, sans-serif; font-size: 14px; }
-            QPushButton { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; background-color: rgb(142,190,68); font-weight: bold; color: white; }
-            QMenu::item {color: black; }               
-            QMenu::item:selected {color: black; background-color: lightgrey;}
-            QPushButton:hover { background: #eaeaea; color: black; }
-            QFrame {border: 1px solid; border-radius: 5px; background-color: white;}
-        """)
-
         _centralWidget = QWidget()
-        self.setCentralWidget(_centralWidget)
+        _centralWidget.setObjectName("centralWidget")
 
+        self.setStyleSheet(self.readStyleSheet())
+
+        self.setCentralWidget(_centralWidget)
         _leftBar = LeftBar(_centralWidget, self.event_dispatcher)
         _rightBar = MainPart(_centralWidget, self.event_dispatcher)
 

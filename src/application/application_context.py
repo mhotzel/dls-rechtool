@@ -1,5 +1,4 @@
 import sys
-from typing import MutableMapping
 from application.config_service_listener import ConfigServiceListener
 from application.invoice_import_listener import InvoiceImportListener
 from services.sqlite_eventstore import SqliteEventStore
@@ -9,6 +8,7 @@ from ui.setup_window import SetupWindow
 from ui.main_window import MainWindow
 
 from application.event_dispatcher import EventDispatcher, EventDispatcherImpl, Listener
+from PySide6.QtWidgets import QStyleFactory
 
 
 class ApplicationContext:
@@ -16,6 +16,8 @@ class ApplicationContext:
 
     def __init__(self):
         self.qApp = QApplication(sys.argv)
+        self.qApp.setStyle('Fusion')
+        #print(QStyleFactory.keys())
         self.__event_store = None
         self.dbfile: str = None
         self.event_dispatcher = EventDispatcherImpl()
@@ -27,7 +29,6 @@ class ApplicationContext:
 
     def __registerServices(self):
         self.config_service = ConfigService()
-       
 
     def __registerListeners(self):
         setupWindow = SetupWindow(self.config_service, firstStart=False)

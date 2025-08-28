@@ -1,7 +1,11 @@
 
+from contextlib import closing
+from os import path
+import os
 from pathlib import Path
 from PySide6.QtWidgets import QMainWindow, QGridLayout, QWidget, QLineEdit, QPushButton, QFileDialog, QMessageBox
-from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
+from PySide6.QtCore import Qt, QSize
 from services.config_service import ConfigService
 
 
@@ -13,17 +17,31 @@ class SetupWindow(QMainWindow):
         self.configService = configService
         self.__setDesign()
         self.setWindowTitle(
-            'DLS - Rechnungs- und Lieferantedatenerfassung - Initiales Setup')
+            'DLS - Rechnungs- und Lieferantendatenerfassung - Initiales Setup')
         self.__build_ui()
+        self.setWindowIcon(self._createIcons())
+
+    def _createIcons(self):
+        my_icon = QIcon()
+        my_icon.addFile(path.join('assets', 'favicon16x16.jpg'), QSize(16, 16))
+        my_icon.addFile(path.join('assets', 'favicon24x24.jpg'), QSize(24, 24))
+        my_icon.addFile(path.join('assets', 'favicon32x32.jpg'), QSize(32, 32))
+        my_icon.addFile(path.join('assets', 'favicon48x48.jpg'), QSize(48, 48))
+        my_icon.addFile(path.join('assets', 'favicon64x64.jpg'), QSize(64, 64))
+        my_icon.addFile(
+            path.join('assets', 'favicon256x256.jpg'), QSize(256, 256))
+        return my_icon
+
+    def readStyleSheet(self) -> str:
+        """liest das StyleSheet als String ein"""
+        file_path = Path(os.path.abspath(__file__)).parent.joinpath('stylesheet.css')
+        with closing(open(file_path)) as infile:
+            styles = infile.read()
+        return styles
 
     def __setDesign(self) -> None:
         """Setzt die StyleSheets usw"""
-        self.setStyleSheet("""
-            QWidget { background: #f3f3f3; font-family: calibri, arial, helvetica, sans-serif; font-size: 14px; }
-            QPushButton { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; background-color: rgb(142,190,68); font-weight: bold; color: white; }
-            QPushButton:hover { background: #eaeaea; color: black; }
-            QLineEdit {background-color: white; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; }
-        """)
+        self.setStyleSheet(self.readStyleSheet())
 
     def __build_ui(self) -> None:
         self.setCentralWidget(QWidget())

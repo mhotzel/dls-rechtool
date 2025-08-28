@@ -10,8 +10,11 @@ class LeftBar(QFrame):
         self._buildUi()
 
     def _buildUi(self):
-        # self.setFixedWidth(200)
-        _layout = QVBoxLayout()
+
+        self.setLayout(QVBoxLayout())
+        self.innerFrame = QFrame(self)
+        self.layout().addWidget(self.innerFrame)
+
         self.btn_config = QPushButton("Datenbank konfigurieren")
         self.btn_config.clicked.connect(
             lambda evt: self.event_dispatcher.send(AppEvent('config-db')))
@@ -20,8 +23,9 @@ class LeftBar(QFrame):
         self.btn_kurz = QPushButton("Kurz-Rechnung importieren")
         self.btn_kurz.clicked.connect(lambda evt: self.event_dispatcher.send(AppEvent('import-invoice', 'kurz')))
         # self.button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        _layout.addWidget(self.btn_config)
-        _layout.addWidget(self.btn_edeka)
-        _layout.addWidget(self.btn_kurz)
-        _layout.addStretch(1)
-        self.setLayout(_layout)
+       
+        self.innerFrame.setLayout(QVBoxLayout())
+        self.innerFrame.layout().addWidget(self.btn_config)
+        self.innerFrame.layout().addWidget(self.btn_edeka)
+        self.innerFrame.layout().addWidget(self.btn_kurz)
+        self.innerFrame.layout().addStretch(1)

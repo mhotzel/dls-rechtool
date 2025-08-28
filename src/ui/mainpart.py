@@ -1,13 +1,13 @@
-from PySide6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QSizePolicy, QFrame
-
+from PySide6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QSizePolicy, QFrame, QStackedWidget
+from ui.import_xinvoice import ImportEInvoice
 from application.event_dispatcher import EventDispatcher
 
-class MainPart(QFrame):
+class MainPart(QStackedWidget):
     def __init__(self, parent, event_dispatcher: EventDispatcher):
-        super().__init__(parent, lineWidth=1)
+        super().__init__(parent)
         self.event_dispatcher = event_dispatcher
-        self._buildUi()
+        self._build_ui()
 
-    def _buildUi(self):
-        _layout = QVBoxLayout()
-        self.setMinimumWidth(200)
+    def _build_ui(self):
+        self.invoiceWidget = ImportEInvoice(self)
+        self.addWidget(self.invoiceWidget)
