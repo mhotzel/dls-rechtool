@@ -3,6 +3,7 @@ from os import path
 import os
 from pathlib import Path
 import sys
+from application.app_event import AppEvent
 from ui.leftbar import LeftBar
 from ui.mainpart import MainPart
 
@@ -38,7 +39,8 @@ class MainWindow(QMainWindow):
         fileMenu.setToolTipsVisible(True)
         quitAction = QAction("Beenden", self, toolTip="Beenden",
                              shortcut=QKeySequence("alt+f4"))
-        # quitAction.triggered.connect(self.app.quit)
+        quitAction.triggered.connect(self.close)
+        # quitAction.triggered.connect(lambda e: self.event_dispatcher.send(AppEvent(evt_type='app-quit')))
         fileMenu.addAction(quitAction)
         self.menuBar().addMenu(fileMenu)
 
@@ -56,17 +58,17 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(self.readStyleSheet())
 
         self.setCentralWidget(_centralWidget)
-        _leftBar = LeftBar(_centralWidget, self.event_dispatcher)
-        _rightBar = MainPart(_centralWidget, self.event_dispatcher)
+        self.leftBar = LeftBar(_centralWidget, self.event_dispatcher)
+        self.rightBar = MainPart(_centralWidget, self.event_dispatcher)
 
-        _leftBar.setSizePolicy(QSizePolicy.Policy.Fixed,
+        self.leftBar.setSizePolicy(QSizePolicy.Policy.Fixed,
                                QSizePolicy.Policy.Expanding)
-        _rightBar.setSizePolicy(
+        self.rightBar.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         _layout = QHBoxLayout(_centralWidget)
-        _layout.addWidget(_leftBar)
-        _layout.addWidget(_rightBar)
+        _layout.addWidget(self.leftBar)
+        _layout.addWidget(self.rightBar)
         _centralWidget.setLayout(_layout)
 
     def show(self):

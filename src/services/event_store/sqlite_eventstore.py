@@ -1,6 +1,6 @@
 from typing import Sequence
-from services.eventstore import EventStore
-from services.event import Event
+from services.event_store.eventstore import EventStore
+from services.event_store.event import Event
 import sqlite3
 import uuid
 
@@ -44,6 +44,8 @@ class SqliteEventStore(EventStore):
         self.conn.execute("PRAGMA foreign_keys=ON;")
         self.conn.execute("PRAGMA synchronous=NORMAL;")
         self._migrate()
+        self.processHandler
+
 
     def _migrate(self):
         """Prüft, ob die Datenbank vorhanden ist und legt diese an, wenn nicht"""
@@ -105,7 +107,6 @@ class SqliteEventStore(EventStore):
             )
 
             next_version += 1
-
             self.conn.commit()
 
         except Exception:

@@ -5,7 +5,7 @@ import json
 import uuid
 
 from pydantic import BaseModel
-from services.event import Event
+from services.event_store.event import Event
 
 EVENT_TYPE_SUPPLIER_ONBOARDED = 'supplier.onboarded'
 

@@ -3,9 +3,10 @@ from contextlib import closing
 from os import path
 import os
 from pathlib import Path
-from PySide6.QtWidgets import QMainWindow, QGridLayout, QWidget, QLineEdit, QPushButton, QFileDialog, QMessageBox
-from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QMainWindow, QGridLayout, QWidget, QLineEdit, QPushButton, QFileDialog, QMessageBox, QApplication
+from PySide6.QtGui import QIcon, QScreen
 from PySide6.QtCore import Qt, QSize
+from application.app_event import AppEvent
 from services.config_service import ConfigService
 
 
@@ -34,7 +35,8 @@ class SetupWindow(QMainWindow):
 
     def readStyleSheet(self) -> str:
         """liest das StyleSheet als String ein"""
-        file_path = Path(os.path.abspath(__file__)).parent.joinpath('stylesheet.css')
+        file_path = Path(os.path.abspath(__file__)
+                         ).parent.joinpath('stylesheet.css')
         with closing(open(file_path)) as infile:
             styles = infile.read()
         return styles
@@ -123,4 +125,11 @@ class SetupWindow(QMainWindow):
     def show(self):
         pfad = str(self.configService.getDatabaseFilePath())
         self.txtPathToDb.setText(pfad)
-        return super().show()
+        super().show()
+        screenSize = QScreen.availableGeometry(QApplication.primaryScreen())
+        winXpos = ((screenSize.width() - self.width())/2)
+        winYpos = ((screenSize.height() - self.height())/2)
+        self.move(winXpos, winYpos)
+
+    def processEvent(self, event: AppEvent):
+        self.show()

@@ -17,15 +17,15 @@ class LeftBar(QFrame):
 
         self.btn_config = QPushButton("Datenbank konfigurieren")
         self.btn_config.clicked.connect(
-            lambda evt: self.event_dispatcher.send(AppEvent('config-db')))
-        self.btn_edeka = QPushButton("EDEKA-Rechnung importieren")
-        self.btn_edeka.clicked.connect(lambda evt: self.event_dispatcher.send(AppEvent('import-invoice', 'edeka')))
-        self.btn_kurz = QPushButton("Kurz-Rechnung importieren")
-        self.btn_kurz.clicked.connect(lambda evt: self.event_dispatcher.send(AppEvent('import-invoice', 'kurz')))
+            lambda evt: self.event_dispatcher.send(AppEvent(evt_type='start-config-db')))
+        self.btn_editsuppliers = QPushButton('Lieferanten pflegen')
+        self.btn_editsuppliers.clicked.connect(lambda evt: self.event_dispatcher.send(AppEvent(evt_type='edit-suppliers')))
+        self.btn_invoices = QPushButton("Rechnungen importieren")
+        self.btn_invoices.clicked.connect(lambda evt: self.event_dispatcher.send(AppEvent(evt_type='import-invoice', evt_data='edeka')))
         # self.button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
        
         self.innerFrame.setLayout(QVBoxLayout())
         self.innerFrame.layout().addWidget(self.btn_config)
-        self.innerFrame.layout().addWidget(self.btn_edeka)
-        self.innerFrame.layout().addWidget(self.btn_kurz)
+        self.innerFrame.layout().addWidget(self.btn_editsuppliers)
+        self.innerFrame.layout().addWidget(self.btn_invoices)
         self.innerFrame.layout().addStretch(1)

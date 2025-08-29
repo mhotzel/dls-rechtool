@@ -3,7 +3,7 @@ from abc import abstractmethod
 from typing import Protocol, Sequence
 import uuid
 
-from services.event import Event
+from services.event_store.event import Event
 
 
 class EventStore(Protocol):

@@ -2,7 +2,7 @@
 from contextlib import closing
 import os
 from pathlib import Path
-from application.event_dispatcher import AppEvent, Listener
+from application.event_dispatcher import AppEvent
 
 
 class ConfigService():

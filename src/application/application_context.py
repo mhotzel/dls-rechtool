@@ -1,14 +1,12 @@
 import sys
-from application.config_service_listener import ConfigServiceListener
-from application.invoice_import_listener import InvoiceImportListener
-from services.sqlite_eventstore import SqliteEventStore
+
+from services.event_store.sqlite_eventstore import SqliteEventStore
 from services.config_service import ConfigService
 from PySide6.QtWidgets import QApplication
 from ui.setup_window import SetupWindow
 from ui.main_window import MainWindow
 
-from application.event_dispatcher import EventDispatcher, EventDispatcherImpl, Listener
-from PySide6.QtWidgets import QStyleFactory
+from application.event_dispatcher import EventDispatcherImpl
 
 
 class ApplicationContext:
@@ -17,30 +15,16 @@ class ApplicationContext:
     def __init__(self):
         self.qApp = QApplication(sys.argv)
         self.qApp.setStyle('Fusion')
-        #print(QStyleFactory.keys())
+        # print(QStyleFactory.keys())
         self.__event_store = None
         self.dbfile: str = None
         self.event_dispatcher = EventDispatcherImpl()
         self.config_service = ConfigService()
 
-        self.__registerServices()
-        self.__registerListeners()
-        self.__register_widgets()
-
-    def __registerServices(self):
-        self.config_service = ConfigService()
-
-    def __registerListeners(self):
-        setupWindow = SetupWindow(self.config_service, firstStart=False)
-        self.event_dispatcher.register(
-            'config-db', ConfigServiceListener(setupWin=setupWindow))
-        self.event_dispatcher.register(
-            'import-invoice', InvoiceImportListener()
-        )
-
-    def __register_widgets(self):
         self.mainWindow = MainWindow(self.event_dispatcher)
         self.setup_window = SetupWindow(self.config_service)
+        self.event_dispatcher.register('start-config-db', self.setup_window.processEvent)
+        self.event_dispatcher.register('app-quit', lambda evt: self.qApp.exit(0))
 
     @property
     def event_store(self):
@@ -57,6 +41,5 @@ class ApplicationContext:
             self.qApp.exec()
 
         if self.config_service.getDatabaseFilePath():
-            mainWindow = MainWindow(self.event_dispatcher)
-            mainWindow.show()
+            self.mainWindow.show()
             self.qApp.exec()
