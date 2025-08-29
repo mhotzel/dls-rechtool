@@ -35,17 +35,23 @@ class ConcurrencyError(Exception):
 class SqliteEventStore(EventStore):
     """Speichert Events in einer SQLITE3-Datenbank"""
 
-    def __init__(self, dbfile: str):
+    def __init__(self):
         super().__init__()
-        self.dbfile = dbfile
-        self.conn = sqlite3.connect(dbfile)
+        self.__dbFile = None
+
+    @property
+    def dbFile(self) -> str:
+        return self.__dbFile
+
+    @dbFile.setter
+    def dbFile(self, dbf: str) -> None:
+        self.__dbfile = dbf
+        self.conn = sqlite3.connect(self.__dbfile)
         # bessere Parallelität/Performance
         self.conn.execute("PRAGMA journal_mode=WAL;")
         self.conn.execute("PRAGMA foreign_keys=ON;")
         self.conn.execute("PRAGMA synchronous=NORMAL;")
         self._migrate()
-        self.processHandler
-
 
     def _migrate(self):
         """Prüft, ob die Datenbank vorhanden ist und legt diese an, wenn nicht"""
@@ -54,8 +60,8 @@ class SqliteEventStore(EventStore):
 
     def _get_stream_version_tx(self, cursor: sqlite3.Cursor, subject):
         cursor.execute(
-            "SELECT MAX(version) FROM events_t WHERE subject=?", (subject,))
-        v = cursor.fetchone()[0]
+            "SELECT MAX(version) as max_version FROM events_t WHERE subject=?", (subject,))
+        v = cursor.fetchone()['max_version']
         return int(v) if v is not None else None
 
     def add_event(self, evt: Event, expected_version: int | None) -> None:

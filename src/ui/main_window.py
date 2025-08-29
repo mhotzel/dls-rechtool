@@ -2,23 +2,25 @@ from contextlib import closing
 from os import path
 import os
 from pathlib import Path
-import sys
 from application.app_event import AppEvent
+from services.event_store.eventstore import EventStore
 from ui.leftbar import LeftBar
 from ui.mainpart import MainPart
 
 from PySide6.QtCore import QSize
-from PySide6.QtGui import QAction, QKeySequence, QScreen, QIcon, QPalette, QColor, QColorConstants
+from PySide6.QtGui import QAction, QKeySequence, QScreen, QIcon
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QMenu, QSizePolicy, QWidget
 
 from application.event_dispatcher import EventDispatcher
 
 class MainWindow(QMainWindow):
 
-    def __init__(self, eventDispatcher: EventDispatcher):
+    def __init__(self, eventDispatcher: EventDispatcher, evtStore: EventStore):
         super().__init__()
+        self.evtStore = evtStore
         self.setWindowTitle("DLS - Rechnungs- und Lieferantendatenerfassung")
         self.event_dispatcher: EventDispatcher = eventDispatcher
+        self.evtStore: EventStore = evtStore
         self._buildGui()
         self._addMenus()
         self.setWindowIcon(self._createIcons())
@@ -39,10 +41,14 @@ class MainWindow(QMainWindow):
         fileMenu.setToolTipsVisible(True)
         quitAction = QAction("Beenden", self, toolTip="Beenden",
                              shortcut=QKeySequence("alt+f4"))
-        quitAction.triggered.connect(self.close)
-        # quitAction.triggered.connect(lambda e: self.event_dispatcher.send(AppEvent(evt_type='app-quit')))
+        #quitAction.triggered.connect(self.close)
+        quitAction.triggered.connect(lambda e: self.event_dispatcher.send(AppEvent(evt_type='app-quit')))
         fileMenu.addAction(quitAction)
         self.menuBar().addMenu(fileMenu)
+
+    def closeEvent(self, event):
+        self.event_dispatcher.send(AppEvent(evt_type='app-quit'))
+        return super().closeEvent(event)
 
     def readStyleSheet(self) -> str:
         """liest das StyleSheet als String ein"""
@@ -59,16 +65,16 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(_centralWidget)
         self.leftBar = LeftBar(_centralWidget, self.event_dispatcher)
-        self.rightBar = MainPart(_centralWidget, self.event_dispatcher)
+        self.main_part = MainPart(_centralWidget, self.event_dispatcher, self.evtStore)
 
         self.leftBar.setSizePolicy(QSizePolicy.Policy.Fixed,
                                QSizePolicy.Policy.Expanding)
-        self.rightBar.setSizePolicy(
+        self.main_part.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         _layout = QHBoxLayout(_centralWidget)
         _layout.addWidget(self.leftBar)
-        _layout.addWidget(self.rightBar)
+        _layout.addWidget(self.main_part)
         _centralWidget.setLayout(_layout)
 
     def show(self):

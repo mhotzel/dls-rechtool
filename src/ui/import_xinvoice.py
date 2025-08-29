@@ -1,14 +1,23 @@
 
 
+from typing import List
 from PySide6.QtWidgets import QWidget, QGridLayout, QLabel, QLineEdit, QPushButton, QCheckBox, QVBoxLayout, QFrame, QComboBox
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import QSize
+
+from application.event_dispatcher import EventDispatcher
+from domain.supplier_reader import SupplierReader
+from domain.suppliers import Supplier
+from services.event_store.eventstore import EventStore
 
 
 class ImportEInvoice(QWidget):
     """Oberflaeche zur Steuerung des Imports von E-Rechnungen"""
 
-    def __init__(self, parent: QWidget):
+    def __init__(self, parent: QWidget, event_dispatcher: EventDispatcher, evtStore: EventStore):
         super().__init__(parent=parent)
+        self.evtStore: EventStore = evtStore
+        self.event_dispatcher: EventDispatcher = event_dispatcher
+        self.supplierReader = SupplierReader(self.evtStore)
         self.__build_ui()
 
     def __build_ui(self):
@@ -57,3 +66,10 @@ class ImportEInvoice(QWidget):
 
         self.bodyFrame.setMinimumHeight(400)
         self.bodyFrame.setMinimumSize(QSize(500, 400))
+
+    def showEvent(self, event):
+        suppliers: List[Supplier] = self.supplierReader.read_all()
+        self.cmbSupplier.clear()
+        for s in suppliers:
+            self.cmbSupplier.addItem(s.suppl_name, userData=s.suppl_id)
+        return super().showEvent(event)

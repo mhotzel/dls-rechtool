@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QSizePolicy, QFrame
+from PySide6.QtWidgets import QPushButton, QVBoxLayout, QFrame
 
 from application.event_dispatcher import AppEvent, EventDispatcher
 

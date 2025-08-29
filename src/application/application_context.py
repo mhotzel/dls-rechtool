@@ -16,15 +16,19 @@ class ApplicationContext:
         self.qApp = QApplication(sys.argv)
         self.qApp.setStyle('Fusion')
         # print(QStyleFactory.keys())
-        self.__event_store = None
+        self.__event_store = SqliteEventStore()
         self.dbfile: str = None
         self.event_dispatcher = EventDispatcherImpl()
         self.config_service = ConfigService()
 
-        self.mainWindow = MainWindow(self.event_dispatcher)
         self.setup_window = SetupWindow(self.config_service)
         self.event_dispatcher.register('start-config-db', self.setup_window.processEvent)
-        self.event_dispatcher.register('app-quit', lambda evt: self.qApp.exit(0))
+        self.event_dispatcher.register('app-quit', lambda e: self.quit())
+
+    def quit(self) -> None:
+        """Beendet die Anwendung ordnungsgemäß"""
+        self.event_store.close()
+        self.qApp.exit(0)
 
     @property
     def event_store(self):
@@ -36,10 +40,14 @@ class ApplicationContext:
 
     def run(self) -> None:
         """Startet die Anwendung"""
-        if not self.config_service.getDatabaseFilePath():
+        dbfile = self.config_service.getDatabaseFilePath()
+        if not dbfile:
             self.setup_window.show()
             self.qApp.exec()
 
-        if self.config_service.getDatabaseFilePath():
+        dbfile = self.config_service.getDatabaseFilePath()
+        if dbfile:
+            self.event_store.dbFile = str(dbfile)
+            self.mainWindow = MainWindow(self.event_dispatcher, self.event_store)
             self.mainWindow.show()
             self.qApp.exec()
