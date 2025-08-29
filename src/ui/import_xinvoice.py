@@ -70,6 +70,7 @@ class ImportEInvoice(QWidget):
     def showEvent(self, event):
         suppliers: List[Supplier] = self.supplierReader.read_all()
         self.cmbSupplier.clear()
+        self.cmbSupplier.addItem('')
         for s in suppliers:
             self.cmbSupplier.addItem(s.suppl_name, userData=s.suppl_id)
         return super().showEvent(event)
