@@ -167,7 +167,7 @@ class FakturXInvoicePosition:
     # ram:SpecifiedLineTradeDelivery/ram:BilledQuantity/@unitCode / Optional
     billedQuantityUnitCode: str | None = None
     # ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax / MUSS
-    applicableTradeTax: str | None = None
+    applicableTradeTax: ApplicableTradeTax | None = None
     # ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount / MUSS
     lineTotalAmount: float | None = None
 
@@ -282,7 +282,7 @@ class FakturXInvoice():
         positions = []
         posList = self.root.findall(
             'rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem', self.namespaces)
-        for idx, pos in enumerate(posList):
+        for idx, pos in enumerate(posList, start=1):
             # Wichtig: Die Positionsnummer ist zumindest bei Fleischerei Kurz NICHT eindeutig,
             # obwohl das m.E. so Vorschrift ist! Deswegen ein separater Positionszähler
             positions.append(
@@ -321,7 +321,7 @@ class FakturXInvoice():
                             pos),
                         categoryCode=applicableTradeTaxCategoryCodeMapping.getElement(
                             pos),
-                        rateApplicablePercent=applicableTradeTaxRateApplicablePercentMapping.getElement(
+                        rateApplicablePercent=applicableTradeTaxRateApplicablePercentMapping.getElementAsFloat(
                             pos)
                     ),
                     lineTotalAmount=lineTotalAmountMapping.getElementAsFloat(

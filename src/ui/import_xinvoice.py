@@ -14,6 +14,7 @@ from domain.suppliers import Supplier
 from domain.zugferd_invoice import ZugferdInvoiceDocument
 from services.event_store.eventstore import EventStore
 from ui.status_msg_widget import StatusMessageWidget
+from ui.invoice_positions_widget import InvoicePostionsWidget
 
 
 class ImportEInvoice(QGroupBox):
@@ -31,9 +32,9 @@ class ImportEInvoice(QGroupBox):
         self.setLayout(QVBoxLayout(self))
 
         self.headFrame = QFrame(self)
-        self.bodyFrame = QFrame(self)
+        self.invoiceWidget = InvoicePostionsWidget(self, self.event_dispatcher)
         self.layout().addWidget(self.headFrame)
-        self.layout().addWidget(self.bodyFrame, stretch=1)
+        self.layout().addWidget(self.invoiceWidget)
 
         __headLayout = QGridLayout(self.headFrame)
         self.headFrame.setLayout(__headLayout)
@@ -62,18 +63,14 @@ class ImportEInvoice(QGroupBox):
             parent=self.headFrame, readOnly=True)
         self.btnLoadInVoice = QPushButton('Rechnung laden', self.headFrame)
         self.btnLoadInVoice.clicked.connect(self.load_invoice)
-        self.chkAlreadyImported = QCheckBox(
-            'Rechnung wurde bereits importiert', self.headFrame)
-        self.chkAlreadyImported.setEnabled(False)
 
         __headLayout.addWidget(self.txtFldSupplier, 2, 0)
         __headLayout.addWidget(self.txtFldInvoiceNr, 2, 1)
         __headLayout.addWidget(self.txtFldInvoiceDate, 2, 2)
-        __headLayout.addWidget(self.chkAlreadyImported, 2, 3)
         __headLayout.addWidget(self.btnLoadInVoice, 2, 4)
 
-        self.bodyFrame.setMinimumHeight(400)
-        self.bodyFrame.setMinimumSize(QSize(500, 400))
+        self.invoiceWidget.setMinimumHeight(400)
+        self.invoiceWidget.setMinimumSize(QSize(500, 400))
         self.statusWidget = StatusMessageWidget(self, self.event_dispatcher)
         self.layout().addWidget(self.statusWidget)
 
@@ -98,4 +95,4 @@ class ImportEInvoice(QGroupBox):
             return
 
         invoice_doc = ZugferdInvoiceDocument(pdf_file=pdf_file)
-        print(invoice_doc.invoice)
+        self.invoiceWidget.addInvoiceData(invoicePositions=invoice_doc.invoice.invoicePositions)
