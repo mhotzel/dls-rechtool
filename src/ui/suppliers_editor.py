@@ -14,6 +14,7 @@ from domain.supplier_reader import SupplierReader
 from domain.suppliers import Supplier
 from services.event_store.eventstore import EventStore
 from services.event_store.event import Event
+from ui.status_msg_widget import StatusMessageWidget
 
 
 class SupplierListWidget(QGroupBox):
@@ -27,7 +28,7 @@ class SupplierListWidget(QGroupBox):
 
         self.evt_dispatcher.register(
             'suppliers-changed', lambda e: self.suppliers_changed())
-        
+
         self.suppliers_changed()
 
     def __build_ui(self):
@@ -119,21 +120,24 @@ class SupplierEditWidget(QGroupBox):
             )
 
             self.evtStore.add_event(evt, expected_version=-1)
-            QMessageBox.information(
-                self, 'Erfolg', f"Der Lieferant '{supplier.suppl_name}' wurde erfolgreich angelegt")
+            self.evt_dispatcher.send(AppEvent(
+                evt_type='status-message', evt_data=f"INFO: Lieferant '{supplier.suppl_name}' wurde erfolgreich angelegt"))
             self.evt_dispatcher.send(AppEvent(evt_type='suppliers-changed'))
             self.clear_inputs()
 
         except SupplierAlreadyExistsException as se:
+            msg = f"CRITICAL: Es ist bereits ein Lieferant mit der ID '{self.txt_suppl_id.text()}' vorhanden"
             QMessageBox.critical(
-                self, 'Fehler bei der Anlage des Lieferanten',
-                f"Es ist bereits ein Lieferant mit der ID '{self.txt_suppl_id.text()}' vorhanden"
-            )
+                self, 'Fehler bei der Anlage des Lieferanten', msg)
+            self.evt_dispatcher.send(
+                AppEvent(evt_type='status-message', evt_data=msg))
+
         except ValueError as ve:
+            msg = f"CRITICAL: Lieferanten ohne ID sind nicht zulässig"
             QMessageBox.critical(
-                self, 'Fehler bei der Anlage des Lieferanten',
-                f"Lieferanten ohne ID sind nicht zulässig"
-            )
+                self, 'Fehler bei der Anlage des Lieferanten', msg)
+            self.evt_dispatcher.send(
+                AppEvent(evt_type='status-message', evt_data=msg))
 
 
 class SuppliersEditorWidget(QWidget):
@@ -153,4 +157,5 @@ class SuppliersEditorWidget(QWidget):
             self, self.evt_dispatcher, self.evtStore))
         layout.addWidget(SupplierEditWidget(
             self, self.evt_dispatcher, self.evtStore))
+        layout.addWidget(StatusMessageWidget(self, self.evt_dispatcher))
         layout.addStretch(1)
