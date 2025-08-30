@@ -5,7 +5,8 @@ from datetime import timezone
 import uuid
 
 REGISTERED_EVENTS = {
-    'supplier.onboarded': "Es wurde ein neuer Lieferant hinzugefügt"
+    'supplier.onboarded': "Es wurde ein neuer Lieferant hinzugefügt",
+    'invoiceitem.imported': "Es wurde eine neue Rechnungsposition eingelesen"
 }
 
 class Event(BaseModel):

@@ -144,7 +144,7 @@ class SqliteEventStore(EventStore):
             result.append(evt)
         return result
 
-    def readSubject(self, subject: str, from_version: int = 1, limit: int | None = None):
+    def readSubject(self, subject: str, from_version: int = 1, limit: int | None = None) -> Sequence[Event]:
         """Liest alle Events mit dem uebergebenen Subject, also einen 'Stream'.
         from_version  => Ab welcher Version soll gelesen werden?
         limit         => Anzahl zu lesender Events

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Sequence, Tuple
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import Element
 from datetime import datetime
@@ -230,7 +230,7 @@ class FakturXInvoice():
         return elem.text if elem is not None else None
 
     @property
-    def sellerGlobalId(self) -> tuple:
+    def sellerGlobalId(self) -> Tuple[str, str]:
         """Liefert die GlobalID des Verkäufers und die dazugehörige SchemaID, welche die Herkunft der GlobalID beschreibt. Muss laut Standard nicht vorhanden sein.
         Alternativ kann auch die ID des Verkäufers verwendet werden, die aber auch nicht zwingend vorhanden sein muss.
         Ist die GlobalID vorhanden, ist sie eindeutig und kann auch für die Identifikation des Verkäufers verwendet werden.
