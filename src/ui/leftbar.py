@@ -19,13 +19,31 @@ class LeftBar(QFrame):
         self.btn_config.clicked.connect(
             lambda evt: self.event_dispatcher.send(AppEvent(evt_type='start-config-db')))
         self.btn_editsuppliers = QPushButton('Lieferanten pflegen')
-        self.btn_editsuppliers.clicked.connect(lambda evt: self.event_dispatcher.send(AppEvent(evt_type='edit-suppliers')))
+        self.btn_editsuppliers.clicked.connect(
+            lambda evt: self.event_dispatcher.send(AppEvent(evt_type='edit-suppliers')))
         self.btn_invoices = QPushButton("Rechnungen importieren")
-        self.btn_invoices.clicked.connect(lambda evt: self.event_dispatcher.send(AppEvent(evt_type='import-invoice', evt_data='edeka')))
-        # self.button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-       
+        self.btn_invoices.clicked.connect(lambda evt: self.event_dispatcher.send(
+            AppEvent(evt_type='import-invoice', evt_data='edeka')))
+        self.btn_paxan_orderconfirm = QPushButton("paxan-Bestell-\neingangsbestätigung\nimportieren")
+        self.btn_edeka_orderconfirm = QPushButton("EDEKA-Bestell-\neingangsbestätigung\nimportieren")
+        #self.btn_edeka_orderconfirm.setEnabled(False)
+        self.btn_edeka_orderconfirm.clicked.connect(
+            lambda evt: self.event_dispatcher.send(
+                AppEvent(
+                    evt_type='import-edeka-orderconfirmation'
+                )
+            )
+        )
+        self.btn_article_input = QPushButton("Manuelle Artikelerfassung")
+        self.btn_map_gtin = QPushButton("GTIN/EAN nachpflegen")
+        self.btn_export_articles = QPushButton("Artikel exportieren")
         self.innerFrame.setLayout(QVBoxLayout())
         self.innerFrame.layout().addWidget(self.btn_config)
         self.innerFrame.layout().addWidget(self.btn_editsuppliers)
         self.innerFrame.layout().addWidget(self.btn_invoices)
+        self.innerFrame.layout().addWidget(self.btn_paxan_orderconfirm)
+        self.innerFrame.layout().addWidget(self.btn_edeka_orderconfirm)
+        self.innerFrame.layout().addWidget(self.btn_article_input)
+        self.innerFrame.layout().addWidget(self.btn_map_gtin)
+        self.innerFrame.layout().addWidget(self.btn_export_articles)
         self.innerFrame.layout().addStretch(1)

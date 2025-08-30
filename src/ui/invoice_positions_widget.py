@@ -97,7 +97,6 @@ class InvoicePosTableModel(QAbstractTableModel):
             return f"{value}"
         return default
 
-
 class InvoicePositionsWidget(QGroupBox):
     """Listet die Rechnungspositionen"""
 
@@ -113,8 +112,11 @@ class InvoicePositionsWidget(QGroupBox):
         self.tableWidget.setModel(model)
         header = self.tableWidget.horizontalHeader()
         for i in range(15):
-            header.setSectionResizeMode(
-                i, QHeaderView.ResizeMode.ResizeToContents)
+            if i == 4:
+                header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
+            else:
+                header.setSectionResizeMode(
+                    i, QHeaderView.ResizeMode.ResizeToContents)
             
         self.invoice_model_filled = True
 
@@ -125,4 +127,5 @@ class InvoicePositionsWidget(QGroupBox):
         self.tableWidget = QTableView(parent=self)
         self.tableWidget.setSelectionBehavior(
             QTableView.SelectionBehavior.SelectRows)
+        self.tableWidget.setWordWrap(True)
         layout.addWidget(self.tableWidget)

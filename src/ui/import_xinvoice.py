@@ -11,6 +11,7 @@ from PySide6.QtCore import QSize
 
 from application.app_event import AppEvent
 from application.event_dispatcher import EventDispatcher
+from domain.import_xinvoice_cmd import ImportXInvoiceCmd
 from domain.invoice_item import InvoiceItem
 from domain.invoice_pos_reader import InvoiceItemReader
 from domain.supplier_reader import SupplierReader
@@ -137,41 +138,10 @@ class ImportEInvoice(QGroupBox):
 
         try:
             events = self.evtStore.readSubject(subject=subject, limit=1)
-            if len(events) > 0:
-                raise InvoiceAlreadyImportedException(
-                    f"invoice with invoice-nr '{self.txtFldInvoiceNr.text()}' (subject '{subject}') was already imported")
+            events_to_save = ImportXInvoiceCmd(
+                events=events, invoice=self.invoice_doc.invoice, supplier_id=supplier_id)()
 
-            inv_item: InvoiceItem = None
-            invoice = self.invoice_doc.invoice
-            for pos in invoice.invoicePositions:
-                inv_item = InvoiceItem(
-                    invoice_id=invoice.invoiceNumber,
-                    invoice_date=invoice.invoiceDate,
-                    invoice_seller_id=supplier_id,
-                    invoice_seller_name=invoice.sellerName,
-                    invoice_seller_globalid=invoice.sellerGlobalId[0],
-                    pos_idx=pos.idx,
-                    pos_nr=pos.lineId,
-                    pos_global_id=pos.globalproductId[0],
-                    pos_seller_id=pos.sellerAssignedId,
-                    pos_name=pos.name,
-                    pos_gross_price=pos.grossPriceProductTradePrice.chargeAmount,
-                    pos_gross_quantity=pos.grossPriceProductTradePrice.basisQuantity,
-                    pos_gross_unitcode=pos.grossPriceProductTradePrice.unitCode,
-                    pos_net_price=pos.netPriceProductTradePrice.chargeAmount,
-                    pos_net_quantity=pos.netPriceProductTradePrice.basisQuantity,
-                    pos_net_unitcode=pos.netPriceProductTradePrice.unitCode,
-                    pos_billed_quantity=pos.billedQuantity,
-                    pos_billed_unitcode=pos.billedQuantityUnitCode,
-                    pos_tax_percent=pos.applicableTradeTax.rateApplicablePercent,
-                    pos_total_line_amount=pos.lineTotalAmount
-                )
-                evt = Event.createEvent(
-                    id=uuid.uuid1(),
-                    subject=subject,
-                    type='invoiceitem.imported',
-                    data=inv_item.model_dump_json()
-                )
+            for evt in events_to_save:
                 self.evtStore.add_event(evt=evt, expected_version=None)
                 self.event_dispatcher.send(
                     AppEvent(
@@ -182,5 +152,6 @@ class ImportEInvoice(QGroupBox):
             self.event_dispatcher.send(
                 AppEvent(
                     evt_type='status-message',
-                    evt_data=f"CRITICAL:Rechnungsdaten '{subject}' wurden nicht gespeichert: {e}")
+                    evt_data=f"CRITICAL:Rechnungsdaten '{subject}' wurden nicht gespeichert: {e}"
+                )
             )
