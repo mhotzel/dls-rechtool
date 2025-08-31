@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, MutableMapping
 import uuid
 from PySide6.QtWidgets import (
     QGroupBox, QWidget, QFrame, QVBoxLayout,
@@ -12,7 +12,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from application.app_event import AppEvent
 from application.event_dispatcher import EventDispatcher
-from domain.order_item import OrderItem
+from domain.order_confirmation import OrderConfirmation, OrderItem
 from services.event_store.eventstore import EventStore, Event
 from ui.status_msg_widget import StatusMessageWidget
 
@@ -70,29 +70,40 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
             read_only=True, data_only=True)
         ws: Worksheet = wb.worksheets[0]
         item: OrderItem = None
+        order_conf_map: MutableMapping[str, OrderConfirmation] = dict()
+
         try:
             for row in ws.iter_rows(3, min_col=1, max_col=11, values_only=True):
                 if row[2] is None:
                     break
+                order_confirmation_id = row[1].replace('.xlsx', '')
+                if order_confirmation_id not in order_conf_map:
+                    order_conf_map[order_confirmation_id] = OrderConfirmation(
+                        seller_id='1',
+                        order_confirm=order_confirmation_id,
+                        order_date=row[8].date(),
+                        positions=[]
+                    )
+
                 item = OrderItem(
                     idx=row[0],
-                    seller_id='1',
-                    order_confirm=row[1],
-                    pos_seller_id=row[2],
-                    pos_global_id=row[3],
-                    pos_name=row[4],
-                    pos_quantity=row[5],
-                    pos_unitcode=row[6],
-                    pos_packaging_quantity=row[7],
-                    pos_order_date=row[8].date(),
-                    pos_price=row[9],
-                    pos_total_line_amount=row[10]
+                    seller_assigned_id=row[2],
+                    global_id=row[3],
+                    name=row[4],
+                    quantity=row[5],
+                    unitcode=row[6],
+                    packaging_quantity=row[7],
+                    price=row[9],
+                    total_line_amount=row[10]
                 )
+                order_conf_map[order_confirmation_id].positions.append(item)
+
+            for key, orderconf in order_conf_map.items():
                 evt = Event.createEvent(
                     id=uuid.uuid1(),
-                    subject=f'orderconfirmation-{item.order_confirm}-{item.idx}',
-                    type='orderitem.imported',
-                    data=item.model_dump_json()
+                    subject=f'orderconfirmation-{orderconf.order_confirm}',
+                    type='order.imported',
+                    data=orderconf.model_dump_json()
                 )
                 self.evtStore.add_event(evt=evt, expected_version=-1)
                 self.evt_dispatcher.send(AppEvent(
@@ -101,5 +112,6 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
             self.evt_dispatcher.send(AppEvent(
                 evt_type='status-message', evt_data='INFO:Die Bestellbestätigungen wurden importiert'))
         except Exception as e:
+            print(repr(e))
             self.evt_dispatcher.send(AppEvent(
                 evt_type='status-message', evt_data=f"CRITICAL:Import war fehlerhaft bei '{item}': {e}"))

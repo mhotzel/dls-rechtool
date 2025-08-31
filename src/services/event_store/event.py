@@ -7,7 +7,7 @@ import uuid
 REGISTERED_EVENTS = {
     'supplier.onboarded': "Es wurde ein neuer Lieferant hinzugefügt",
     'invoice.imported': "Es wurde eine neue Rechnung eingelesen",
-    'orderitem.imported': "Es wurde eine neue Bestellposition eingelesen"
+    'order.imported': "Es wurde eine neue Bestellbeastätigun eingelesen"
 }
 
 class Event(BaseModel):
