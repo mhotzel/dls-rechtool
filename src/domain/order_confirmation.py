@@ -7,16 +7,16 @@ from pydantic import BaseModel
 class OrderItem(BaseModel):
     idx: int
     seller_assigned_id: str
-    global_id: str | None
+    global_id: str | None = None
     name: str
-    quantity: float
-    unitcode: str
-    packaging_quantity: float
+    quantity: float | None = None
+    unitcode: str | None = None
+    packaging_quantity: float | None = None
     price: float
-    total_line_amount: float
+    total_line_amount: float | None = None
 
 class OrderConfirmation(BaseModel):
     seller_id: str
     order_confirm: str
     order_date: date
-    positions: List[OrderItem] | None
+    positions: List[OrderItem] | None = []

@@ -4,7 +4,7 @@ import uuid
 from PySide6.QtWidgets import (
     QGroupBox, QWidget, QFrame, QVBoxLayout,
     QPushButton, QLineEdit, QGridLayout,
-    QFileDialog
+    QFileDialog, QLabel
 )
 
 from openpyxl import Workbook, load_workbook
@@ -23,6 +23,7 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
         super().__init__('EDEKA-Bestellbestätigungen importieren', parent)
         self.evtStore = evtStore
         self.evt_dispatcher = event_dispatcher
+        self.seller_id = '1'
         self.__build_ui()
 
     def __build_ui(self) -> None:
@@ -40,6 +41,12 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
         self.btn_select_file = QPushButton(
             'Datei auswählen', parent=self.import_frame)
 
+        txt = "ACHTUNG: Die Bestellbetätigungen werden "
+        txt += f"'hart' der Lieferantennummer '{self.seller_id}' zugeordnet!\n"
+        txt += "EDEKA muss also in der Anwendung mit genau dieser Nummer angelegt sein"
+        self.lbl_hinweis_liefnr = QLabel(txt, self.import_frame)
+        self.lbl_hinweis_liefnr.setStyleSheet('.QLabel {font-weight: bold; color: #CE0538}')
+
         self.btn_select_file.clicked.connect(lambda evt: self.select_file())
         self.txt_selected_file = QLineEdit(
             '', parent=self.import_frame, readOnly=True)
@@ -49,9 +56,10 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
         self.btn_start_import.clicked.connect(lambda evt: self.start_import())
         self.btn_start_import.setEnabled(False)
 
-        self.import_frame.layout().addWidget(self.btn_select_file, 0, 0)
-        self.import_frame.layout().addWidget(self.txt_selected_file, 1, 0)
-        self.import_frame.layout().addWidget(self.btn_start_import, 2, 0)
+        self.import_frame.layout().addWidget(self.lbl_hinweis_liefnr, 0, 0)
+        self.import_frame.layout().addWidget(self.btn_select_file, 1, 0)
+        self.import_frame.layout().addWidget(self.txt_selected_file, 2, 0)
+        self.import_frame.layout().addWidget(self.btn_start_import, 3, 0)
 
     def select_file(self):
         filename, ok = QFileDialog.getOpenFileName(
@@ -108,7 +116,7 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
                 self.evtStore.add_event(evt=evt, expected_version=-1)
                 self.evt_dispatcher.send(AppEvent(
                     evt_type='status-message', evt_data=f"INFO:Bestellbestätig '{item.idx}' wurden importiert"))
-                
+
             self.evt_dispatcher.send(AppEvent(
                 evt_type='status-message', evt_data='INFO:Die Bestellbestätigungen wurden importiert'))
         except Exception as e:

@@ -25,6 +25,13 @@ class LeftBar(QFrame):
         self.btn_invoices.clicked.connect(lambda evt: self.event_dispatcher.send(
             AppEvent(evt_type='import-invoice', evt_data='edeka')))
         self.btn_paxan_orderconfirm = QPushButton("paxan-Bestell-\neingangsbestätigung\nimportieren")
+        self.btn_paxan_orderconfirm.clicked.connect(
+            lambda evt: self.event_dispatcher.send(
+                AppEvent(
+                    evt_type='import-paxan-orderconfirmation'
+                )
+            )
+        )        
         self.btn_edeka_orderconfirm = QPushButton("EDEKA-Bestell-\neingangsbestätigung\nimportieren")
         #self.btn_edeka_orderconfirm.setEnabled(False)
         self.btn_edeka_orderconfirm.clicked.connect(
