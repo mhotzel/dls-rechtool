@@ -12,7 +12,7 @@ from PySide6.QtCore import QSize
 from application.app_event import AppEvent
 from application.event_dispatcher import EventDispatcher
 from domain.import_xinvoice_cmd import ImportXInvoiceCmd
-from domain.invoice_item import InvoiceItem
+from domain.xinvoice import InvoiceItem
 from domain.invoice_pos_reader import InvoiceItemReader
 from domain.supplier_reader import SupplierReader
 from domain.suppliers import Supplier
@@ -80,7 +80,7 @@ class ImportEInvoice(QGroupBox):
         self.btnLoadInVoice.clicked.connect(self.load_invoice)
         self.btnSaveInVoice = QPushButton('Rechnung speichern', self.headFrame)
         self.btnSaveInVoice.setEnabled(False)
-        self.btnSaveInVoice.clicked.connect(self.save_invoice_positions)
+        self.btnSaveInVoice.clicked.connect(self.save_invoice)
 
         __headLayout.addWidget(self.txtFldSupplier, 2, 0, 1, 3)
         __headLayout.addWidget(self.txtFldInvoiceNr, 2, 3)
@@ -131,23 +131,22 @@ class ImportEInvoice(QGroupBox):
         else:
             self.btnSaveInVoice.setEnabled(False)
 
-    def save_invoice_positions(self):
+    def save_invoice(self):
         """Speichert die Rechnungspositionen in der Datenbank"""
         supplier_id: str = str(self.cmbSupplier.currentData())
         subject = f"invoice-{supplier_id}-{self.txtFldInvoiceNr.text()}"
 
         try:
             events = self.evtStore.readSubject(subject=subject, limit=1)
-            events_to_save = ImportXInvoiceCmd(
+            event_to_save = ImportXInvoiceCmd(
                 events=events, invoice=self.invoice_doc.invoice, supplier_id=supplier_id)()
 
-            for evt in events_to_save:
-                self.evtStore.add_event(evt=evt, expected_version=None)
-                self.event_dispatcher.send(
-                    AppEvent(
-                        evt_type='status-message',
-                        evt_data='INFO:Rechnungsdaten wurden gespeichert')
-                )
+            self.evtStore.add_event(evt=event_to_save, expected_version=-1)
+            self.event_dispatcher.send(
+                AppEvent(
+                    evt_type='status-message',
+                    evt_data='INFO:Rechnungsdaten wurden gespeichert')
+            )
         except Exception as e:
             self.event_dispatcher.send(
                 AppEvent(

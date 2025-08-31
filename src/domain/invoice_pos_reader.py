@@ -1,6 +1,6 @@
 
 from typing import List
-from domain.invoice_item import InvoiceItem
+from domain.xinvoice import InvoiceItem
 from services.event_store.eventstore import EventStore
 
 
