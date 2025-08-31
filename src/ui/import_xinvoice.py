@@ -55,8 +55,6 @@ class ImportEInvoice(QGroupBox):
         self.lblSelectSupplier = QLabel('Lieferant zuordnen', self)
         self.cmbSupplier = QComboBox(self, editable=False)
         self.cmbSupplier.addItem('<keiner>', None)
-        self.cmbSupplier.addItem('EDEKA', 1)
-        self.cmbSupplier.addItem('Kurz', 2)
         self.cmbSupplier.currentIndexChanged.connect(
             lambda evt: self.supplier_selected())
 
@@ -68,8 +66,8 @@ class ImportEInvoice(QGroupBox):
         self.lblInvoiceDate = QLabel('Rechnungsdatum', self.headFrame)
 
         __headLayout.addWidget(self.lblSupplier, 1, 0)
-        __headLayout.addWidget(self.lblInvoiceNr, 1, 2)
-        __headLayout.addWidget(self.lblInvoiceDate, 1, 3)
+        __headLayout.addWidget(self.lblInvoiceNr, 1, 3)
+        __headLayout.addWidget(self.lblInvoiceDate, 1, 4)
         __headLayout.setColumnStretch(7, 1)
 
         self.txtFldSupplier = QLineEdit(parent=self.headFrame, readOnly=True)

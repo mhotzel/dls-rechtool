@@ -1,5 +1,5 @@
 from typing import Sequence
-from services.event_store.eventstore import EventStore
+from services.event_store.eventstore import ConcurrencyError, EventStore
 from services.event_store.event import Event
 import sqlite3
 import uuid
@@ -26,10 +26,6 @@ CREATE INDEX IF NOT EXISTS idx_subject ON events_t(subject);
 """, """ 
 CREATE INDEX IF NOT EXISTS idx_timestamp ON events_t(timestamp);
 """]
-
-
-class ConcurrencyError(Exception):
-    pass
 
 
 class SqliteEventStore(EventStore):

@@ -3,7 +3,7 @@
     padding: 5px;
 }
 
-.QFrame {
+.QFrame, .HeaderWidget{
     background-color: rgb(248, 248, 248);
     border: 1px solid lightgrey;
     border-radius: 5px;
@@ -11,6 +11,10 @@
 
 .QLineEdit {
     padding: 5px;
+}
+
+.QLabel {
+    padding: 5px 0px;
 }
 
 .QListWidget {

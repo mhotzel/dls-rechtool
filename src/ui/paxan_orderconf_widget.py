@@ -17,7 +17,8 @@ import locale
 from application.app_event import AppEvent
 from application.event_dispatcher import EventDispatcher
 from domain.order_confirmation import OrderConfirmation, OrderItem
-from services.event_store.eventstore import EventStore
+from domain.paxan_order_confirm_import_cmd import PaxanOrderConfirmationImportCmd
+from services.event_store.eventstore import ConcurrencyError, EventStore
 from services.event_store.event import Event
 from ui.status_msg_widget import StatusMessageWidget
 
@@ -80,63 +81,24 @@ class PaxanOrderConfirmationImportWidget(QGroupBox):
             self.btn_start_import.setEnabled(True)
 
     def start_import(self):
+
         try:
-            filename = self.txt_selected_file.text()
-            match = re.search(r"(\d{8}-\d{6})", filename)
-            if match:
-                order_id = match.group(1)  # 20250826-173018
-            else:
-                raise LookupError(
-                    f"Es konnte keine Bestell-ID aus dem Dateinamen '{filename}' extrahiert werden.")
-            item = None
-            with closing(open(filename, encoding='utf8')) as csv_file:
-                reader = DictReader(csv_file)
-                order_conf = OrderConfirmation(
-                    seller_id=self.seller_id,
-                    order_confirm=order_id,
-                    # erstmal ein Dummy, wird mit der ersten Position gefixt
-                    order_date=datetime.now().date()
-                )
-                for row in reader:
-                    position = row['Position']
-                    order_date = datetime.strptime(
-                        row['Datum'], '%d.%m.%Y').date()
-                    seller_assigned_id = row['ArtNr']
-                    global_id = row['EAN']
-                    name = row['Regaltext']
-                    quantity = self.getFloat(row['Anzahl'])
+            evt = PaxanOrderConfirmationImportCmd(
+                filename=self.txt_selected_file.text(),
+                seller_id=self.seller_id
+            ).createEvent()
 
-                    price = self.getFloat(row['Preis'])
-                    order_conf.order_date = order_date
-
-                    item = OrderItem(
-                        idx=position,
-                        seller_assigned_id=seller_assigned_id,
-                        global_id=global_id,
-                        name=name,
-                        quantity=quantity,
-                        price=price
-                    )
-                    order_conf.positions.append(item)
-
-            subject = f'orderconfirmation-{order_conf.order_confirm}'
-            evt = Event.createEvent(
-                uuid.uuid1(),
-                subject=subject,
-                type='order.imported',
-                data=order_conf.model_dump_json()
-            )
             self.evtStore.add_event(evt, expected_version=-1)
             self.evt_dispatcher.send(
                 AppEvent(
                     evt_type='status-message', evt_data='INFO:Die Bestellbestätigungen wurden importiert'
                 )
             )
-            
+
         except Exception as e:
             self.evt_dispatcher.send(
                 AppEvent(
-                    evt_type='status-message', evt_data=f"CRITICAL:Import war fehlerhaft bei '{item}': {e}"
+                    evt_type='status-message', evt_data=f"CRITICAL:Import schlug fehl: {e}"
                 )
             )
 

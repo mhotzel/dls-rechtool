@@ -24,16 +24,18 @@ class LeftBar(QFrame):
         self.btn_invoices = QPushButton("Rechnungen importieren")
         self.btn_invoices.clicked.connect(lambda evt: self.event_dispatcher.send(
             AppEvent(evt_type='import-invoice', evt_data='edeka')))
-        self.btn_paxan_orderconfirm = QPushButton("paxan-Bestell-\neingangsbestätigung\nimportieren")
+        self.btn_paxan_orderconfirm = QPushButton(
+            "paxan-Bestell-\neingangsbestätigung\nimportieren")
         self.btn_paxan_orderconfirm.clicked.connect(
             lambda evt: self.event_dispatcher.send(
                 AppEvent(
                     evt_type='import-paxan-orderconfirmation'
                 )
             )
-        )        
-        self.btn_edeka_orderconfirm = QPushButton("EDEKA-Bestell-\neingangsbestätigung\nimportieren")
-        #self.btn_edeka_orderconfirm.setEnabled(False)
+        )
+        self.btn_edeka_orderconfirm = QPushButton(
+            "EDEKA-Bestell-\neingangsbestätigung\nimportieren")
+        # self.btn_edeka_orderconfirm.setEnabled(False)
         self.btn_edeka_orderconfirm.clicked.connect(
             lambda evt: self.event_dispatcher.send(
                 AppEvent(
@@ -42,8 +44,16 @@ class LeftBar(QFrame):
             )
         )
         self.btn_article_input = QPushButton("Manuelle Artikelerfassung")
+        self.btn_article_input.clicked.connect(
+            lambda evt: self.event_dispatcher.send(
+                AppEvent(
+                    evt_type='import-manual-positions'
+                )
+            )
+        )
         self.btn_map_gtin = QPushButton("GTIN/EAN nachpflegen")
         self.btn_export_articles = QPushButton("Artikel exportieren")
+        self.btn_price_viewer = QPushButton('Preise anzeigen und rechnen')
         self.innerFrame.setLayout(QVBoxLayout())
         self.innerFrame.layout().addWidget(self.btn_config)
         self.innerFrame.layout().addWidget(self.btn_editsuppliers)
@@ -53,4 +63,5 @@ class LeftBar(QFrame):
         self.innerFrame.layout().addWidget(self.btn_article_input)
         self.innerFrame.layout().addWidget(self.btn_map_gtin)
         self.innerFrame.layout().addWidget(self.btn_export_articles)
+        self.innerFrame.layout().addWidget(self.btn_price_viewer)
         self.innerFrame.layout().addStretch(1)

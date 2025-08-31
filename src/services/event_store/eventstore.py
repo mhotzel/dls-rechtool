@@ -5,6 +5,9 @@ import uuid
 
 from services.event_store.event import Event
 
+class ConcurrencyError(Exception):
+    def __init__(self, *args):
+        super().__init__(*args)
 
 class EventStore(Protocol):
     """Dient der Speicherung von Events"""
