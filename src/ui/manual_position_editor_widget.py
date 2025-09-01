@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt, QDate, QAbstractTableModel, QModelIndex, QLocale,
 
 from application.app_event import AppEvent
 from application.event_dispatcher import EventDispatcher
+from domain.manual_input_cmd import ManualDocument, ManualDocumentPosition, manualPositionsImportedEvent
 from domain.supplier_reader import SupplierReader
 from domain.suppliers import Supplier
 from services.event_store.eventstore import EventStore
@@ -40,6 +41,13 @@ class PositionTableModel(QAbstractTableModel):
         """Fuegt dem Modell eine Zeile hinzu"""
         self._data.append((idx, art_nr, gtin, name, price))
         self.modelReset.emit()
+
+    def removeAll(self):
+        self._data.clear()
+        self.modelReset.emit()
+
+    def positions(self):
+        return self._data
 
     def removeRows(self, row, count, parent=QModelIndex()):
         if row < 0 or row + count > len(self._data):
@@ -154,11 +162,14 @@ class PositionEditorWidget(QGroupBox):
         self.formWidget.layout().addWidget(self.txtPrice, 1, 6)
 
         self.btn_grp = QFrame(self)
+        self.btn_clean = QPushButton('Zurücksetzen')
+        self.btn_clean.clicked.connect(lambda evt: self.parent().clean_input())
         self.btn_ok = QPushButton('Position hinzufügen')
         self.btn_ok.setEnabled(False)
         self.btn_ok.clicked.connect(self.add_position)
         self.btn_grp.setLayout(QHBoxLayout())
         self.btn_grp.layout().addStretch(1)
+        self.btn_grp.layout().addWidget(self.btn_clean)
         self.btn_grp.layout().addWidget(self.btn_ok)
         layout.addWidget(self.btn_grp)
 
@@ -246,6 +257,10 @@ class HeaderWidget(QFrame):
 
         self.txtFldDocDate.dateChanged.connect(
             lambda e: self.check_header_infos_changed())
+
+        self.btnSavePositions.clicked.connect(
+            lambda e: self.parent().save_doc()
+        )
 
     def __build_ui(self):
         __headLayout = QGridLayout(self)
@@ -336,4 +351,55 @@ class ManualPositionEditorWidget(QGroupBox):
         layout.addWidget(self.positions_widget)
 
         layout.addStretch(1)
-        layout.addWidget(StatusMessageWidget(self, self.evt_dispatcher))
+        self.statusWidget = StatusMessageWidget(self, self.evt_dispatcher)
+        layout.addWidget(self.statusWidget)
+
+    def save_doc(self):
+        """speichert das Dokument"""
+
+        doc = ManualDocument(
+            seller_id=self.header_widget.cmbSupplier.currentData(),
+            doc_type=self.header_widget.cmb_doctype.currentData(),
+            doc_id=self.header_widget.txtFldDocId.text(),
+            doc_date=self.header_widget.txtFldDocDate.date().toPython()
+        )
+
+        # idx, art_nr, gtin, name, price
+        for idx, pos in enumerate(self.positions_widget.position_table_model.positions(), start=1):
+            man_pos = ManualDocumentPosition(
+                idx=idx,
+                line_id=str(pos[0]),
+                sellerAssignedId=pos[1],
+                globalId=pos[2],
+                name=pos[3],
+                price=pos[4]
+            )
+            doc.positions.append(man_pos)
+
+        evt = manualPositionsImportedEvent(doc)
+        try:
+            self.evt_store.add_event(evt=evt, expected_version=-1)
+            self.evt_dispatcher.send(
+                AppEvent(
+                    evt_type='status-message',
+                    evt_data=f"INFO:Dokument wurde erfolgreich mit subject='{evt.subject}' gespeichert")
+            )
+        except Exception as e:
+            self.evt_dispatcher.send(
+                AppEvent(
+                    evt_type='status-message',
+                    evt_data=f"CRITICAL:Fehler beim Speichern des Dokumente: {e}")
+            )
+
+    def clean_input(self):
+        "Leert die Eingabefelder wieder"
+        self.header_widget.cmb_doctype.setCurrentIndex(0)
+        self.header_widget.cmbSupplier.setCurrentIndex(0)
+        self.header_widget.txtFldDocId.setText('')
+        self.header_widget.txtFldDocDate.setDate(QDate.currentDate())
+        self.positions_widget.position_table_model.removeAll()
+        self.positions_widget.txtGlobalId.setText('')
+        self.positions_widget.txtLfdNr.setText('')
+        self.positions_widget.txtName.setText('')
+        self.positions_widget.txtSellerAssignedId.setText('')
+        self.positions_widget.txtPrice.setText('')
