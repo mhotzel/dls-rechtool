@@ -384,6 +384,7 @@ class ManualPositionEditorWidget(QGroupBox):
                     evt_type='status-message',
                     evt_data=f"INFO:Dokument wurde erfolgreich mit subject='{evt.subject}' gespeichert")
             )
+            self.clean_input()
         except Exception as e:
             self.evt_dispatcher.send(
                 AppEvent(
