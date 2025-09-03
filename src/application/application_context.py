@@ -1,6 +1,6 @@
 import sys
 
-from services.event_store.sqlite_eventstore import SqliteEventStore
+from services.event_store.sqlite_eventstore import SqliteEventStore, ThreadSafeConnectionManager
 from services.config_service import ConfigService
 from PySide6.QtWidgets import QApplication
 from ui.setup_window import SetupWindow
@@ -16,7 +16,8 @@ class ApplicationContext:
         self.qApp = QApplication(sys.argv)
         self.qApp.setStyle('Fusion')
         # print(QStyleFactory.keys())
-        self.__event_store = SqliteEventStore()
+        self.conn_manager = ThreadSafeConnectionManager()
+        self.event_store = SqliteEventStore(self.conn_manager)
         self.dbfile: str = None
         self.event_dispatcher = EventDispatcherImpl()
         self.config_service = ConfigService()
@@ -27,16 +28,8 @@ class ApplicationContext:
 
     def quit(self) -> None:
         """Beendet die Anwendung ordnungsgemäß"""
-        self.event_store.close()
+        self.conn_manager.close_all_connections()
         self.qApp.exit(0)
-
-    @property
-    def event_store(self):
-        """Returns the event store instance."""
-        if self.__event_store is None and self.config_service.getDatabaseFilePath():
-            self.__event_store = SqliteEventStore(self.dbfile)
-
-        return self.__event_store
 
     def run(self) -> None:
         """Startet die Anwendung"""
@@ -47,7 +40,7 @@ class ApplicationContext:
 
         dbfile = self.config_service.getDatabaseFilePath()
         if dbfile:
-            self.event_store.dbFile = str(dbfile)
+            self.conn_manager.dbFile = str(dbfile)
             self.mainWindow = MainWindow(self.event_dispatcher, self.event_store)
             self.mainWindow.show()
             self.qApp.exec()

@@ -22,19 +22,19 @@ class StatusMessageWidget(QGroupBox):
         self.setLayout(layout)
         self.lblMessage = QLabel()
         layout.addWidget(self.lblMessage)
+        self.lblMessage.setWordWrap(True)
 
     def setStatus(self, evt: AppEvent) -> None:
         """Schreibt den Status"""
 
         level, message = evt.evt_data.split(':', maxsplit=1)
 
-        if level == 'INFO':
-            self.lblMessage.setStyleSheet('.QLabel { color: green }')
-        elif level == 'WARN':
-            self.lblMessage.setStyleSheet('.QLabel { color: green }')
-        elif level == 'CRITICAL':
-            self.lblMessage.setStyleSheet('.QLabel { color: red }')
-        else:
-            self.lblMessage.setStyleSheet('.QLabel { color: black }')
+        colors = {
+            'INFO': 'green',
+            'WARN': 'orange',
+            'CRITICAL': 'red'
+        }
+        color = colors.get(level, 'black')
+        self.lblMessage.setStyleSheet(f"color: {color};")
 
         self.lblMessage.setText(message.strip())

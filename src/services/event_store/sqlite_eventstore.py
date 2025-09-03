@@ -1,8 +1,10 @@
+import atexit
 from typing import Sequence
 from services.event_store.eventstore import ConcurrencyError, EventStore
 from services.event_store.event import Event
 import sqlite3
 import uuid
+from threading import Lock, local, get_ident
 
 SQL = ["""
 CREATE TABLE IF NOT EXISTS events_t (
@@ -28,12 +30,21 @@ CREATE INDEX IF NOT EXISTS idx_timestamp ON events_t(timestamp);
 """]
 
 
-class SqliteEventStore(EventStore):
-    """Speichert Events in einer SQLITE3-Datenbank"""
+def dict_factory(cursor: sqlite3.Cursor, row):
+    fields = [column[0] for column in cursor.description]
+    return {key: value for key, value in zip(fields, row)}
+
+
+class ThreadSafeConnectionManager:
+    """Verwaltet eine thread-lokale SQLite-Verbindung."""
 
     def __init__(self):
-        super().__init__()
+        # map der thread_id zur conn (für sauberes Schließen)
+        self._all_conns = {}
+        self._all_conns_lock = Lock()
+        self._thread_local = local()
         self.__dbFile = None
+        atexit.register(self.close_all_connections)
 
     @property
     def dbFile(self) -> str:
@@ -41,18 +52,74 @@ class SqliteEventStore(EventStore):
 
     @dbFile.setter
     def dbFile(self, dbf: str) -> None:
-        self.__dbfile = dbf
-        self.conn = sqlite3.connect(self.__dbfile)
-        # bessere Parallelität/Performance
-        self.conn.execute("PRAGMA journal_mode=WAL;")
-        self.conn.execute("PRAGMA foreign_keys=ON;")
-        self.conn.execute("PRAGMA synchronous=NORMAL;")
+        self.__dbFile = dbf
+        """Schließt alle bestehenden Verbindungen und legt die DB ggf. an."""
+        self.close_all_connections()
         self._migrate()
+
+    def get_connection(self) -> sqlite3.Connection:
+        """Liefert die thread-lokale Verbindung; erzeugt sie bei Bedarf."""
+        conn = getattr(self._thread_local, "conn", None)
+        if conn is None:
+            conn = self._new_connection()
+            self._thread_local.conn = conn
+            self._thread_local.conn.row_factory = dict_factory
+            with self._all_conns_lock:
+                self._all_conns[get_ident()] = conn
+        return conn
 
     def _migrate(self):
         """Prüft, ob die Datenbank vorhanden ist und legt diese an, wenn nicht"""
+        conn = self.get_connection()
         for stmt in SQL:
-            self.conn.execute(stmt)
+            conn.execute(stmt)
+
+    def _new_connection(self) -> sqlite3.Connection:
+        """Erzeugt eine neue DB-Verbindung mit sinnvollen Defaults."""
+        conn = sqlite3.connect(
+            self.__dbFile,
+            timeout=30.0,                      # Wartezeit bei Locks
+            detect_types=sqlite3.PARSE_DECLTYPES,
+            isolation_level=None               # autocommit; oder setze z.B. "DEFERRED"
+        )
+        # sinnvolle Defaults für paralleles Lesen/Schreiben
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute("PRAGMA busy_timeout=30000;")
+        conn.execute("PRAGMA foreign_keys=ON;")
+        return conn
+
+    def close_connection(self) -> None:
+        """Schließt die Verbindung des aktuellen Threads (falls vorhanden)."""
+        conn: sqlite3.Connection = getattr(self._all_conns_lock, "conn", None)
+        if conn is not None:
+            try:
+                conn.close()
+            finally:
+                self._thread_local.conn = None
+                with self._all_conns_lock:
+                    self._all_conns.pop(get_ident(), None)
+
+    def close_all_connections(self):
+        """Schließt alle Verbindungen, insb. beim Beenden des Prozesses (atexit) und wenn sich die DB ändert."""
+        with self._all_conns_lock:
+            conns = list(self._all_conns.values())
+            self._all_conns.clear()
+
+        c: sqlite3.Connection
+        for c in conns:
+            try:
+                c.close()
+            except Exception:
+                pass
+
+
+class SqliteEventStore(EventStore):
+    """Speichert Events in einer SQLITE3-Datenbank"""
+
+    def __init__(self, conn_manager: ThreadSafeConnectionManager = None):
+        super().__init__()
+        self.conn_manager = conn_manager
 
     def _get_stream_version_tx(self, cursor: sqlite3.Cursor, subject):
         cursor.execute(
@@ -77,7 +144,9 @@ class SqliteEventStore(EventStore):
                 (version, evt_id, specversion, source, type, subject, datacontenttype, timestamp, data) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
-        cur: sqlite3.Cursor = self.conn.cursor()
+
+        conn: sqlite3.Connection = self.conn_manager.get_connection()
+        cur: sqlite3.Cursor = conn.cursor()
         cur.execute('BEGIN IMMEDIATE;')
 
         try:
@@ -94,7 +163,7 @@ class SqliteEventStore(EventStore):
 
             next_version = (current_version or 0) + 1
 
-            self.conn.execute(
+            conn.execute(
                 insert_stmt, (
                     next_version,
                     str(evt.id),
@@ -109,10 +178,10 @@ class SqliteEventStore(EventStore):
             )
 
             next_version += 1
-            self.conn.commit()
+            conn.commit()
 
         except Exception:
-            self.conn.rollback()
+            conn.rollback()
             raise
 
     def readEventsByType(self, evtType: str, from_position: int = 1, limit: int | None = None) -> Sequence[Event]:
@@ -129,12 +198,8 @@ class SqliteEventStore(EventStore):
             sql += " LIMIT ?"
             params.append(limit)
 
-        def dict_factory(cursor: sqlite3.Cursor, row):
-            fields = [column[0] for column in cursor.description]
-            return {key: value for key, value in zip(fields, row)}
-
-        self.conn.row_factory = dict_factory
-        rs = self.conn.execute(sql, params).fetchall()
+        conn = self.conn_manager.get_connection()
+        rs = conn.execute(sql, params).fetchall()
         for row in rs:
             evt = self._row_to_event(row)
             result.append(evt)
@@ -154,12 +219,8 @@ class SqliteEventStore(EventStore):
             sql += " LIMIT ?"
             params.append(limit)
 
-        def dict_factory(cursor: sqlite3.Cursor, row):
-            fields = [column[0] for column in cursor.description]
-            return {key: value for key, value in zip(fields, row)}
-
-        self.conn.row_factory = dict_factory
-        rs = self.conn.execute(sql, params).fetchall()
+        conn = self.conn_manager.get_connection()
+        rs = conn.execute(sql, params).fetchall()
         for row in rs:
             evt = self._row_to_event(row)
             result.append(evt)
@@ -170,18 +231,10 @@ class SqliteEventStore(EventStore):
 
         sql = 'SELECT * FROM events_t WHERE evt_id = ?'
 
-        def dict_factory(cursor: sqlite3.Cursor, row):
-            fields = [column[0] for column in cursor.description]
-            return {key: value for key, value in zip(fields, row)}
-
-        self.conn.row_factory = dict_factory
-        row = self.conn.execute(sql, (str(id),)).fetchone()
+        conn = self.conn_manager.get_connection()
+        row = conn.execute(sql, (str(id),)).fetchone()
         evt = self._row_to_event(row)
         return evt
-
-    def close(self) -> None:
-        """Schließt die DB-Verbindung"""
-        self.conn.close()
 
     @staticmethod
     def _row_to_event(row) -> Event:

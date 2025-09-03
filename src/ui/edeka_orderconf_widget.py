@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QPushButton, QLineEdit, QGridLayout,
     QFileDialog, QLabel
 )
+from PySide6.QtCore import (Signal, Slot, QThreadPool, QRunnable)
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
@@ -19,12 +20,20 @@ from ui.status_msg_widget import StatusMessageWidget
 
 class EdekaOrderConfirmationImportWidget(QGroupBox):
 
+    statusSignal = Signal(str)
+
     def __init__(self, parent: QWidget, event_dispatcher: EventDispatcher, evtStore: EventStore):
         super().__init__('EDEKA-Bestellbestätigungen importieren', parent)
         self.evtStore = evtStore
         self.evt_dispatcher = event_dispatcher
         self.seller_id = '1'
+        self.threadPool = QThreadPool(self)
+        self.statusSignal.connect(self.setStatusMessage)
         self.__build_ui()
+
+    def setStatusMessage(self, msg: str) -> None:
+        self.evt_dispatcher.send(AppEvent(
+            evt_type='status-message', evt_data=msg))
 
     def __build_ui(self) -> None:
         """Baut die Oberfläche"""
@@ -45,7 +54,8 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
         txt += f"'hart' der Lieferantennummer '{self.seller_id}' zugeordnet!\n"
         txt += "EDEKA muss also in der Anwendung mit genau dieser Nummer angelegt sein"
         self.lbl_hinweis_liefnr = QLabel(txt, self.import_frame)
-        self.lbl_hinweis_liefnr.setStyleSheet('.QLabel {font-weight: bold; color: #CE0538}')
+        self.lbl_hinweis_liefnr.setStyleSheet(
+            '.QLabel {font-weight: bold; color: #CE0538}')
 
         self.btn_select_file.clicked.connect(lambda evt: self.select_file())
         self.txt_selected_file = QLineEdit(
@@ -73,8 +83,20 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
             self.btn_start_import.setEnabled(True)
 
     def start_import(self):
-        wb: Workbook = load_workbook(
+        """Startet den Import der Bestellbestätigungen"""
+
+        thread = ImportWorker(
+            self.run_import,
             filename=self.txt_selected_file.text(),
+            evtStore=self.evtStore,
+            statusSignal=self.statusSignal
+        )
+
+        self.threadPool.start(thread)
+
+    def run_import(self, filename: str) -> None:
+        wb: Workbook = load_workbook(
+            filename,
             read_only=True, data_only=True)
         ws: Worksheet = wb.worksheets[0]
         item: OrderItem = None
@@ -105,6 +127,8 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
                     total_line_amount=row[10]
                 )
                 order_conf_map[order_confirmation_id].positions.append(item)
+                self.statusSignal.emit(
+                    f"INFO:Bestellbestätigung '{item.idx}' wurde eingelesen")
 
             for key, orderconf in order_conf_map.items():
                 evt = Event.createEvent(
@@ -114,12 +138,25 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
                     data=orderconf.model_dump_json()
                 )
                 self.evtStore.add_event(evt=evt, expected_version=-1)
-                self.evt_dispatcher.send(AppEvent(
-                    evt_type='status-message', evt_data=f"INFO:Bestellbestätig '{item.idx}' wurden importiert"))
+                self.statusSignal.emit(
+                    f"INFO:Bestellbestätigung '{item.idx}' wurden importiert")
 
-            self.evt_dispatcher.send(AppEvent(
-                evt_type='status-message', evt_data='INFO:Die Bestellbestätigungen wurden importiert'))
+            self.statusSignal.emit(
+                'INFO:Alle Bestellbestätigungen wurden importiert')
         except Exception as e:
             print(repr(e))
-            self.evt_dispatcher.send(AppEvent(
-                evt_type='status-message', evt_data=f"CRITICAL:Import war fehlerhaft bei '{item}': {e}"))
+            self.statusSignal.emit(
+                f"CRITICAL:Import war fehlerhaft bei '{item}': {e}")
+
+
+class ImportWorker(QRunnable):
+
+    def __init__(self, fn, filename: str, evtStore: EventStore, statusSignal: Signal):
+        super().__init__()
+        self.fn = fn
+        self.evtStore = evtStore
+        self.filename = filename
+        self.statusSignal = statusSignal
+
+    def run(self) -> None:
+        self.fn(self.filename)
