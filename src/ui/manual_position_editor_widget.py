@@ -1,8 +1,7 @@
 from typing import List, MutableMapping, Tuple
-import uuid
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton,
-    QGroupBox, QFrame, QLineEdit, QMessageBox, QHBoxLayout,
+    QGroupBox, QFrame, QLineEdit, QHBoxLayout,
     QGridLayout, QLabel, QComboBox, QDateEdit, QHeaderView, QTableView, QMenu
 )
 
@@ -10,14 +9,12 @@ from PySide6.QtGui import QIntValidator, QDoubleValidator, QAction
 from PySide6.QtCore import Qt, QDate, QAbstractTableModel, QModelIndex, QLocale, QPoint
 
 
-from application.app_event import AppEvent
+from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
 from domain.manual_input_cmd import ManualDocument, ManualDocumentPosition, manualPositionsImportedEvent
 from domain.supplier_reader import SupplierReader
 from domain.suppliers import Supplier
 from services.event_store.eventstore import EventStore
-from services.event_store.event import Event
-from ui.status_msg_widget import StatusMessageWidget
 
 import locale
 
@@ -351,8 +348,6 @@ class ManualPositionEditorWidget(QGroupBox):
         layout.addWidget(self.positions_widget)
 
         layout.addStretch(1)
-        self.statusWidget = StatusMessageWidget(self, self.evt_dispatcher)
-        layout.addWidget(self.statusWidget)
 
     def save_doc(self):
         """speichert das Dokument"""
@@ -381,15 +376,17 @@ class ManualPositionEditorWidget(QGroupBox):
             self.evt_store.add_event(evt=evt, expected_version=-1)
             self.evt_dispatcher.send(
                 AppEvent(
+                    evt_lvl=LogLevel.INFO,
                     evt_type='status-message',
-                    evt_data=f"INFO:Dokument wurde erfolgreich mit subject='{evt.subject}' gespeichert")
+                    evt_data=f"Dokument wurde erfolgreich mit subject='{evt.subject}' gespeichert")
             )
             self.clean_input()
         except Exception as e:
             self.evt_dispatcher.send(
                 AppEvent(
+                    evt_lvl=LogLevel.CRITICAL,
                     evt_type='status-message',
-                    evt_data=f"CRITICAL:Fehler beim Speichern des Dokumente: {e}")
+                    evt_data=f"Fehler beim Speichern des Dokumente: {e}")
             )
 
     def clean_input(self):

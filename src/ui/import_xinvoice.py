@@ -1,26 +1,20 @@
 
 
-import datetime
 from typing import List
-import uuid
 from PySide6.QtWidgets import (
     QWidget, QGroupBox, QGridLayout, QLabel, QFileDialog,
-    QLineEdit, QPushButton, QCheckBox, QVBoxLayout, QFrame, QComboBox
+    QLineEdit, QPushButton, QVBoxLayout, QFrame, QComboBox
 )
 from PySide6.QtCore import QSize
 
-from application.app_event import AppEvent
+from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
 from domain.import_xinvoice_cmd import ImportXInvoiceCmd
-from domain.xinvoice import InvoiceItem
-from domain.invoice_pos_reader import InvoiceItemReader
 from domain.supplier_reader import SupplierReader
 from domain.suppliers import Supplier
 from domain.zugferd_invoice import ZugferdInvoiceDocument
 from services.event_store.eventstore import EventStore
-from ui.status_msg_widget import StatusMessageWidget
 from ui.invoice_positions_widget import InvoicePositionsWidget
-from services.event_store.event import Event
 
 
 class InvoiceAlreadyImportedException(Exception):
@@ -88,8 +82,6 @@ class ImportEInvoice(QGroupBox):
 
         self.invoiceWidget.setMinimumHeight(400)
         self.invoiceWidget.setMinimumSize(QSize(500, 400))
-        self.statusWidget = StatusMessageWidget(self, self.event_dispatcher)
-        self.layout().addWidget(self.statusWidget)
 
     def showEvent(self, event):
         suppliers: List[Supplier] = self.supplierReader.read_all()
@@ -108,8 +100,13 @@ class ImportEInvoice(QGroupBox):
         )
 
         if not pdf_file:
-            self.event_dispatcher.send(AppEvent(
-                evt_type='status-message', evt_data='WARN: Es wurde keine PDF-Datei ausgewählt'))
+            self.event_dispatcher.send(
+                AppEvent(
+                    evt_lvl=LogLevel.WARN,
+                    evt_type='status-message',
+                    evt_data='Es wurde keine PDF-Datei ausgewählt'
+                )
+            )
             return
 
         self.invoice_doc = ZugferdInvoiceDocument(pdf_file=pdf_file)
@@ -119,8 +116,13 @@ class ImportEInvoice(QGroupBox):
             self.invoice_doc.invoice.invoiceDate.strftime('%d.%m.%Y'))
         self.txtFldInvoiceNr.setText(self.invoice_doc.invoice.invoiceNumber)
         self.txtFldSupplier.setText(self.invoice_doc.invoice.sellerName)
-        self.event_dispatcher.send(AppEvent(
-            evt_type='status-message', evt_data='INFO: Rechnung wurde erfolgreich zu Anzeige geladen'))
+        self.event_dispatcher.send(
+            AppEvent(
+                evt_lvl=LogLevel.INFO,
+                evt_type='status-message',
+                evt_data='Rechnung wurde erfolgreich zu Anzeige geladen'
+            )
+        )
 
     def supplier_selected(self):
         """Es wurde ein Lieferant gewählt"""
@@ -142,13 +144,15 @@ class ImportEInvoice(QGroupBox):
             self.evtStore.add_event(evt=event_to_save, expected_version=-1)
             self.event_dispatcher.send(
                 AppEvent(
+                    evt_lvl=LogLevel.INFO,
                     evt_type='status-message',
-                    evt_data='INFO:Rechnungsdaten wurden gespeichert')
+                    evt_data='Rechnungsdaten wurden gespeichert')
             )
         except Exception as e:
             self.event_dispatcher.send(
                 AppEvent(
+                    evt_lvl=LogLevel.CRITICAL,
                     evt_type='status-message',
-                    evt_data=f"CRITICAL:Rechnungsdaten '{subject}' wurden nicht gespeichert: {e}"
+                    evt_data=f"Rechnungsdaten '{subject}' wurden nicht gespeichert: {e}"
                 )
             )

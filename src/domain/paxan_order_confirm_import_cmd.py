@@ -1,14 +1,13 @@
 
 from contextlib import closing
 from csv import DictReader
-from datetime import datetime, date
+from datetime import datetime
 import re
 import uuid
 
 from application.app_event import AppEvent
 from domain.order_confirmation import OrderConfirmation, OrderItem
 from services.event_store.event import Event
-from services.event_store.eventstore import EventStore
 
 
 class PaxanOrderConfirmationImportCmd:

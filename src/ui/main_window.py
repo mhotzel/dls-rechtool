@@ -9,9 +9,10 @@ from ui.mainpart import MainPart
 
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QAction, QKeySequence, QScreen, QIcon
-from PySide6.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QMenu, QSizePolicy, QWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QSizePolicy, QWidget, QGridLayout
 
 from application.event_dispatcher import EventDispatcher
+from ui.status_msg_widget import StatusMessageWidget
 
 class MainWindow(QMainWindow):
 
@@ -66,16 +67,18 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(_centralWidget)
         self.leftBar = LeftBar(_centralWidget, self.event_dispatcher)
         self.main_part = MainPart(_centralWidget, self.event_dispatcher, self.evtStore)
+        self.status_widget = StatusMessageWidget(_centralWidget, self.event_dispatcher)
 
         self.leftBar.setSizePolicy(QSizePolicy.Policy.Fixed,
                                QSizePolicy.Policy.Expanding)
         self.main_part.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        _layout = QHBoxLayout(_centralWidget)
-        _layout.addWidget(self.leftBar)
-        _layout.addWidget(self.main_part)
-        _centralWidget.setLayout(_layout)
+        _inner_layout = QGridLayout(_centralWidget)
+        _inner_layout.addWidget(self.leftBar, 0, 0)
+        _inner_layout.addWidget(self.main_part, 0, 1)
+        _inner_layout.addWidget(self.status_widget, 1, 0, 1, 2)
+        _centralWidget.setLayout(_inner_layout)
 
     def show(self):
         super().show()

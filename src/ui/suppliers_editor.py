@@ -1,21 +1,19 @@
 from typing import List
 import uuid
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QFormLayout, QListWidgetItem,
+    QWidget, QVBoxLayout, QPushButton, QFormLayout,
     QHBoxLayout, QGroupBox, QListWidget, QFrame, QLineEdit, QMessageBox
 )
 
 from PySide6.QtCore import Qt
 
-from application.app_event import AppEvent
+from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
 from domain.onboard_supplier_cmd import OnboardSupplierCommand, SupplierAlreadyExistsException
 from domain.supplier_reader import SupplierReader
 from domain.suppliers import Supplier
 from services.event_store.eventstore import EventStore
 from services.event_store.event import Event
-from ui.status_msg_widget import StatusMessageWidget
-
 
 class SupplierListWidget(QGroupBox):
     """Listet die Lieferanten auf"""
@@ -120,24 +118,39 @@ class SupplierEditWidget(QGroupBox):
             )
 
             self.evtStore.add_event(evt, expected_version=-1)
-            self.evt_dispatcher.send(AppEvent(
-                evt_type='status-message', evt_data=f"INFO: Lieferant '{supplier.suppl_name}' wurde erfolgreich angelegt"))
+            self.evt_dispatcher.send(
+                AppEvent(
+                    evt_lvl=LogLevel.INFO,
+                    evt_type='status-message', 
+                    evt_data=f"Lieferant '{supplier.suppl_name}' wurde erfolgreich angelegt"
+                )
+            )
             self.evt_dispatcher.send(AppEvent(evt_type='suppliers-changed'))
             self.clear_inputs()
 
         except SupplierAlreadyExistsException as se:
-            msg = f"CRITICAL: Es ist bereits ein Lieferant mit der ID '{self.txt_suppl_id.text()}' vorhanden"
+            msg = f"Es ist bereits ein Lieferant mit der ID '{self.txt_suppl_id.text()}' vorhanden"
             QMessageBox.critical(
                 self, 'Fehler bei der Anlage des Lieferanten', msg)
             self.evt_dispatcher.send(
-                AppEvent(evt_type='status-message', evt_data=msg))
+                AppEvent(
+                    evt_lvl=LogLevel.CRITICAL,
+                    evt_type='status-message', 
+                    evt_data=msg
+                )
+            )
 
         except ValueError as ve:
-            msg = f"CRITICAL: Lieferanten ohne ID sind nicht zulässig"
+            msg = ve.args[0]
             QMessageBox.critical(
                 self, 'Fehler bei der Anlage des Lieferanten', msg)
             self.evt_dispatcher.send(
-                AppEvent(evt_type='status-message', evt_data=msg))
+                AppEvent(
+                    evt_lvl=LogLevel.CRITICAL,
+                    evt_type='status-message',
+                    evt_data=msg
+                )
+            )
 
 
 class SuppliersEditorWidget(QWidget):
@@ -157,5 +170,4 @@ class SuppliersEditorWidget(QWidget):
             self, self.evt_dispatcher, self.evtStore))
         layout.addWidget(SupplierEditWidget(
             self, self.evt_dispatcher, self.evtStore))
-        layout.addWidget(StatusMessageWidget(self, self.evt_dispatcher))
         layout.addStretch(1)

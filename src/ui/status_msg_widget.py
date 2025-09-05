@@ -1,12 +1,13 @@
 
 from PySide6.QtWidgets import QWidget, QLabel, QHBoxLayout, QGroupBox
 
-from application.app_event import AppEvent
+from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
 
 """
 Das Widget reagiert auf Events vom Typ 'status-message'
 """
+
 
 class StatusMessageWidget(QGroupBox):
 
@@ -27,12 +28,13 @@ class StatusMessageWidget(QGroupBox):
     def setStatus(self, evt: AppEvent) -> None:
         """Schreibt den Status"""
 
-        level, message = evt.evt_data.split(':', maxsplit=1)
+        level: LogLevel = evt.evt_lvl
+        message: str = evt.evt_data
 
         colors = {
-            'INFO': 'green',
-            'WARN': 'orange',
-            'CRITICAL': 'red'
+            LogLevel.INFO: 'green',
+            LogLevel.WARN: 'orange',
+            LogLevel.CRITICAL: 'red'
         }
         color = colors.get(level, 'black')
         self.lblMessage.setStyleSheet(f"color: {color};")

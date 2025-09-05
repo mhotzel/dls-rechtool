@@ -46,3 +46,6 @@ class EventStore(Protocol):
         from_version  => Ab welcher Version soll gelesen werden?
         limit         => Anzahl zu lesender Events
         """
+
+    def event_test(self):
+        print("Ich bin da")

@@ -1,9 +1,7 @@
-from typing import List, MutableMapping, Sequence
-import dataclasses
-from PySide6.QtWidgets import QTableView, QGroupBox, QWidget, QHBoxLayout, QHeaderView, QAbstractItemView
+from typing import Sequence
+from PySide6.QtWidgets import QTableView, QGroupBox, QWidget, QHBoxLayout, QHeaderView
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 
-from application.app_event import AppEvent
 from application.event_dispatcher import EventDispatcher
 from domain.fakturx_invoice import FakturXInvoicePosition
 import locale

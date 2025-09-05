@@ -3,7 +3,11 @@ from contextlib import closing
 from os import path
 import os
 from pathlib import Path
-from PySide6.QtWidgets import QMainWindow, QGridLayout, QWidget, QLineEdit, QPushButton, QFileDialog, QMessageBox, QApplication
+from PySide6.QtWidgets import (
+    QMainWindow, QGridLayout,
+    QWidget, QLineEdit, QPushButton,
+    QFileDialog, QMessageBox, QApplication
+)
 from PySide6.QtGui import QIcon, QScreen
 from PySide6.QtCore import Qt, QSize
 from application.app_event import AppEvent
@@ -50,8 +54,6 @@ class SetupWindow(QMainWindow):
         _layout = QGridLayout(self.centralWidget())
         self.centralWidget().setLayout(_layout)
 
-        # _layout = QGridLayout(self)
-        # self.setLayout(_layout)
         self.txtPathToDb = QLineEdit("leer")
         self.txtPathToDb.setReadOnly(True)
         self.txtPathToDb.setDisabled(True)

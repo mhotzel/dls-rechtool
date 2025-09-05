@@ -1,26 +1,17 @@
 
-from contextlib import closing
-from datetime import date, datetime
 from pathlib import Path
-import re
-import uuid
 from PySide6.QtWidgets import (
     QGroupBox, QWidget, QFrame, QVBoxLayout,
     QPushButton, QLineEdit, QGridLayout,
     QFileDialog, QLabel
 )
 
-from csv import DictReader
-
 import locale
 
-from application.app_event import AppEvent
+from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
-from domain.order_confirmation import OrderConfirmation, OrderItem
 from domain.paxan_order_confirm_import_cmd import PaxanOrderConfirmationImportCmd
-from services.event_store.eventstore import ConcurrencyError, EventStore
-from services.event_store.event import Event
-from ui.status_msg_widget import StatusMessageWidget
+from services.event_store.eventstore import EventStore
 
 
 class PaxanOrderConfirmationImportWidget(QGroupBox):
@@ -41,8 +32,6 @@ class PaxanOrderConfirmationImportWidget(QGroupBox):
         self.import_frame = QFrame(self)
         layout.addWidget(self.import_frame)
         layout.addStretch(1)
-        self.statusWidget = StatusMessageWidget(self, self.evt_dispatcher)
-        layout.addWidget(self.statusWidget)
 
         self.import_frame.setLayout(QGridLayout(self.import_frame))
         self.btn_select_file = QPushButton(
@@ -91,14 +80,18 @@ class PaxanOrderConfirmationImportWidget(QGroupBox):
             self.evtStore.add_event(evt, expected_version=-1)
             self.evt_dispatcher.send(
                 AppEvent(
-                    evt_type='status-message', evt_data='INFO:Die Bestellbestätigungen wurden importiert'
+                    evt_lvl=LogLevel.INFO,
+                    evt_type='status-message',
+                    evt_data='INFO:Die Bestellbestätigungen wurden importiert'
                 )
             )
 
         except Exception as e:
             self.evt_dispatcher.send(
                 AppEvent(
-                    evt_type='status-message', evt_data=f"CRITICAL:Import schlug fehl: {e}"
+                    evt_lvl=LogLevel.CRITICAL,
+                    evt_type='status-message',
+                    evt_data=f"Import schlug fehl: {e}"
                 )
             )
 

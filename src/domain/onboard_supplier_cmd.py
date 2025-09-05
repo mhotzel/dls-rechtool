@@ -19,8 +19,12 @@ class OnboardSupplierCommand:
     def __call__(self) -> Supplier:
         for s in self.__existing_suppliers:
             if self.__new_supplier.suppl_id == s.suppl_id:
-                raise SupplierAlreadyExistsException(f"supplier with suppl_id '{self.__new_supplier.suppl_id}' already exists")
+                raise SupplierAlreadyExistsException(f"Ein Lieferant mit der Nr '{self.__new_supplier.suppl_id}' existiert bereits")
             
         if self.__new_supplier.suppl_id is None or self.__new_supplier.suppl_id == '':
-            raise ValueError(f"supplier must have a supplier-id")
+            raise ValueError(f"Der Lieferant muss eine eindeutige Nr. haben")
+        
+        if self.__new_supplier.suppl_name is None or len(self.__new_supplier.suppl_name) == 0:
+            raise ValueError(f"Der Name des Lieferanten darf nicht leer sein")
+
         return self.__new_supplier

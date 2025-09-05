@@ -1,16 +1,11 @@
 
-from typing import List, Sequence
+from typing import Sequence
 import uuid
 
-from pydantic import BaseModel
-
-from application.app_event import AppEvent
 from domain.already_imported_exception import AlreadyImportedException
 from domain.fakturx_invoice import FakturXInvoice
-from domain.suppliers import Supplier
 from domain.xinvoice import InvoiceItem, Invoice
 from services.event_store.event import Event
-from services.event_store.eventstore import EventStore
 
 
 class ImportXInvoiceCmd:

@@ -6,21 +6,20 @@ from PySide6.QtWidgets import (
     QPushButton, QLineEdit, QGridLayout,
     QFileDialog, QLabel
 )
-from PySide6.QtCore import (Signal, Slot, QThreadPool, QRunnable)
+from PySide6.QtCore import (Signal, QThreadPool, QRunnable)
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
-from application.app_event import AppEvent
+from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
 from domain.order_confirmation import OrderConfirmation, OrderItem
 from services.event_store.eventstore import EventStore, Event
-from ui.status_msg_widget import StatusMessageWidget
 
 
 class EdekaOrderConfirmationImportWidget(QGroupBox):
 
-    statusSignal = Signal(str)
+    statusSignal = Signal(AppEvent)
 
     def __init__(self, parent: QWidget, event_dispatcher: EventDispatcher, evtStore: EventStore):
         super().__init__('EDEKA-Bestellbestätigungen importieren', parent)
@@ -31,9 +30,8 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
         self.statusSignal.connect(self.setStatusMessage)
         self.__build_ui()
 
-    def setStatusMessage(self, msg: str) -> None:
-        self.evt_dispatcher.send(AppEvent(
-            evt_type='status-message', evt_data=msg))
+    def setStatusMessage(self, msg: AppEvent) -> None:
+        self.evt_dispatcher.send(msg)
 
     def __build_ui(self) -> None:
         """Baut die Oberfläche"""
@@ -43,8 +41,6 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
         self.import_frame = QFrame(self)
         layout.addWidget(self.import_frame)
         layout.addStretch(1)
-        self.statusWidget = StatusMessageWidget(self, self.evt_dispatcher)
-        layout.addWidget(self.statusWidget)
 
         self.import_frame.setLayout(QGridLayout(self.import_frame))
         self.btn_select_file = QPushButton(
@@ -128,7 +124,12 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
                 )
                 order_conf_map[order_confirmation_id].positions.append(item)
                 self.statusSignal.emit(
-                    f"INFO:Bestellbestätigung '{item.idx}' wurde eingelesen")
+                    AppEvent(
+                        evt_lvl=LogLevel.INFO,
+                        evt_type='status-message',
+                        evt_data=f"Bestellbestätigung '{item.idx}' wurde eingelesen"
+                    )
+                )
 
             for key, orderconf in order_conf_map.items():
                 evt = Event.createEvent(
@@ -139,14 +140,29 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
                 )
                 self.evtStore.add_event(evt=evt, expected_version=-1)
                 self.statusSignal.emit(
-                    f"INFO:Bestellbestätigung '{item.idx}' wurden importiert")
+                    AppEvent(
+                        evt_lvl=LogLevel.INFO,
+                        evt_type='status-message',
+                        evt_data="Bestellbestätigung '{item.idx}' wurden importiert"
+                    )
+                )
 
             self.statusSignal.emit(
-                'INFO:Alle Bestellbestätigungen wurden importiert')
+                AppEvent(
+                    evt_lvl=LogLevel.INFO,
+                    evt_type='status-message',
+                    evt_data='Alle Bestellbestätigungen wurden importiert'
+                )
+            )
         except Exception as e:
             print(repr(e))
             self.statusSignal.emit(
-                f"CRITICAL:Import war fehlerhaft bei '{item}': {e}")
+                AppEvent(
+                    evt_lvl=LogLevel.CRITICAL,
+                    evt_type='status-message',
+                    evt_data=f"Import war fehlerhaft bei '{item}': {e}"
+                )
+            )
 
 
 class ImportWorker(QRunnable):
