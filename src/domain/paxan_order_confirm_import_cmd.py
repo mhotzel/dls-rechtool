@@ -12,9 +12,10 @@ from services.event_store.event import Event
 
 class PaxanOrderConfirmationImportCmd:
 
-    def __init__(self, filename: str, seller_id: str):
+    def __init__(self, filename: str, suppl_id: str, suppl_name: str):
         self.filename = filename
-        self.seller_id = seller_id
+        self.suppl_id = suppl_id
+        self.suppl_name = suppl_name
         match = re.search(r"(\d{8}-\d{6})", filename)
         self.order_id = None
         if match:
@@ -28,7 +29,8 @@ class PaxanOrderConfirmationImportCmd:
         with closing(open(self.filename, encoding='utf8')) as csv_file:
             reader = DictReader(csv_file)
             order_conf = OrderConfirmation(
-                seller_id=self.seller_id,
+                suppl_id=self.suppl_id,
+                suppl_name=self.suppl_name,
                 order_confirm=self.order_id,
                 # erstmal ein Dummy, wird mit der ersten Position gefixt
                 order_date=datetime.now().date()
@@ -55,11 +57,11 @@ class PaxanOrderConfirmationImportCmd:
                 )
                 order_conf.positions.append(item)
 
-        subject = f'orderconfirmation-{order_conf.order_confirm}'
+        subject = f'orderconfirmation-{order_conf.suppl_id}-{order_conf.order_confirm}'
         evt = Event.createEvent(
             uuid.uuid1(),
             subject=subject,
-            type='order.imported',
+            type='orderconf.imported',
             data=order_conf.model_dump_json()
         )
         return evt

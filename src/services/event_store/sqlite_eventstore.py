@@ -6,6 +6,35 @@ from services.event_store.event import Event
 import sqlite3
 import uuid
 
+SQL = ["""
+CREATE TABLE IF NOT EXISTS events_t (
+    position INTEGER PRIMARY KEY AUTOINCREMENT,
+    version INTEGER NOT NULL,
+	evt_id TEXT NOT NULL UNIQUE,
+	specversion TEXT NOT NULL,
+	source TEXT NOT NULL,
+	type TEXT NOT NULL,
+	subject TEXT,
+	datacontenttype TEXT,
+	timestamp TEXT,
+	data TEXT
+);
+""", """
+CREATE UNIQUE INDEX IF NOT EXISTS idx_subject_version ON events_t(subject, version);
+""", """
+CREATE INDEX IF NOT EXISTS idx_type ON events_t(type);
+""", """
+CREATE INDEX IF NOT EXISTS idx_subject ON events_t(subject);
+""", """ 
+CREATE INDEX IF NOT EXISTS idx_timestamp ON events_t(timestamp);
+"""]
+
+
+def initial_setup(conn: sqlite3.Connection):
+    """Prüft, ob die Datenbank vorhanden ist und legt diese an, wenn nicht"""
+    for stmt in SQL:
+        conn.execute(stmt)
+
 
 class SqliteEventStore(EventStore):
     """Speichert Events in einer SQLITE3-Datenbank"""
@@ -13,6 +42,17 @@ class SqliteEventStore(EventStore):
     def __init__(self, conn_manager: SqliteConnectionManager = None):
         super().__init__()
         self.conn_manager = conn_manager
+
+    @property
+    def conn_manager(self) -> SqliteConnectionManager:
+        return self.__conn_manager
+
+    @conn_manager.setter
+    def conn_manager(self, cm: SqliteConnectionManager) -> None:
+        self.__conn_manager = cm
+        conn = self.__conn_manager.get_connection()
+        initial_setup(conn=conn)
+        self.__conn_manager.close_connection
 
     def _get_stream_version_tx(self, cursor: sqlite3.Cursor, subject):
         cursor.execute(

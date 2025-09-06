@@ -353,7 +353,8 @@ class ManualPositionEditorWidget(QGroupBox):
         """speichert das Dokument"""
 
         doc = ManualDocument(
-            seller_id=self.header_widget.cmbSupplier.currentData(),
+            suppl_id=self.header_widget.cmbSupplier.currentData(),
+            suppl_name=self.header_widget.cmbSupplier.currentText(),
             doc_type=self.header_widget.cmb_doctype.currentData(),
             doc_id=self.header_widget.txtFldDocId.text(),
             doc_date=self.header_widget.txtFldDocDate.date().toPython()

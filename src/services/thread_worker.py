@@ -1,8 +1,7 @@
 from abc import ABC
 from queue import Queue, SimpleQueue
 from threading import Thread
-from typing import Any, Optional, Callable
-import typing
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -29,7 +28,7 @@ class ThreadWorker(ABC):
     """
 
     def __init__(self, name: str = "Worker"):
-        self.__in_queue: Queue[Message] = Queue()
+        self.__in_queue: Queue[Message] = Queue(maxsize=5)
         self.__out_queue: SimpleQueue[Status] = SimpleQueue()
         self.__thread: Optional[Thread] = None
         self._name = name
@@ -70,7 +69,7 @@ class ThreadWorker(ABC):
         'stop()' erledigt das Gleiche.
         """
         msg = Message(evt_type=msg_type, payload=payload)
-        self.__in_queue.put(msg)  # blockiert Konsument auf
+        self.__in_queue.put(msg)
 
     def stop(self) -> None:
         """Sendet eine Stop-Nachricht an den Worker"""

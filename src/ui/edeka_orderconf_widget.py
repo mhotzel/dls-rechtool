@@ -25,7 +25,7 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
         super().__init__('EDEKA-Bestellbestätigungen importieren', parent)
         self.evtStore = evtStore
         self.evt_dispatcher = event_dispatcher
-        self.seller_id = '1'
+        self.suppl_id = '1'
         self.threadPool = QThreadPool(self)
         self.statusSignal.connect(self.setStatusMessage)
         self.__build_ui()
@@ -47,7 +47,7 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
             'Datei auswählen', parent=self.import_frame)
 
         txt = "ACHTUNG: Die Bestellbetätigungen werden "
-        txt += f"'hart' der Lieferantennummer '{self.seller_id}' zugeordnet!\n"
+        txt += f"'hart' der Lieferantennummer '{self.suppl_id}' zugeordnet!\n"
         txt += "EDEKA muss also in der Anwendung mit genau dieser Nummer angelegt sein"
         self.lbl_hinweis_liefnr = QLabel(txt, self.import_frame)
         self.lbl_hinweis_liefnr.setStyleSheet(
@@ -105,7 +105,8 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
                 order_confirmation_id = row[1].replace('.xlsx', '')
                 if order_confirmation_id not in order_conf_map:
                     order_conf_map[order_confirmation_id] = OrderConfirmation(
-                        seller_id='1',
+                        suppl_id='1',
+                        suppl_name='EDEKA',
                         order_confirm=order_confirmation_id,
                         order_date=row[8].date(),
                         positions=[]
@@ -134,8 +135,8 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
             for key, orderconf in order_conf_map.items():
                 evt = Event.createEvent(
                     id=uuid.uuid1(),
-                    subject=f'orderconfirmation-{orderconf.order_confirm}',
-                    type='order.imported',
+                    subject=f'orderconfirmation-{orderconf.suppl_id}-{orderconf.order_confirm}',
+                    type='orderconf.imported',
                     data=orderconf.model_dump_json()
                 )
                 self.evtStore.add_event(evt=evt, expected_version=-1)

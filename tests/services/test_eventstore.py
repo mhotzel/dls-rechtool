@@ -1,6 +1,5 @@
 
 from pathlib import Path
-from application import db_migration
 from services.event_store.sqlite_eventstore import SqliteEventStore
 from services.sqlite_conn_manager import SqliteConnectionManager
 from services.event_store.event import Event
@@ -29,8 +28,7 @@ def test_sqlite_evtstore_available():
 
     mgr = SqliteConnectionManager()
     mgr.dbFile = sqlite_db_file
-    db_migration.initial_setup(mgr.get_connection())
-
+    
     evt_store = SqliteEventStore(mgr)
     assert evt_store is not None
 

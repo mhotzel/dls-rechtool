@@ -16,7 +16,8 @@ class OrderItem(BaseModel):
     total_line_amount: float | None = None
 
 class OrderConfirmation(BaseModel):
-    seller_id: str
+    suppl_id: str
+    suppl_name: str
     order_confirm: str
     order_date: date
     positions: List[OrderItem] | None = []

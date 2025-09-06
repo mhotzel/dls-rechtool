@@ -20,7 +20,8 @@ class PaxanOrderConfirmationImportWidget(QGroupBox):
         super().__init__('Paxan-Bestellbestätigungen importieren', parent)
         locale.setlocale(locale.LC_ALL, '')
         self.evtStore = evtStore
-        self.seller_id = '35'
+        self.suppl_id = '35'
+        self.suppl_name = 'Paxan'
         self.evt_dispatcher = event_dispatcher
         self.__build_ui()
 
@@ -38,7 +39,7 @@ class PaxanOrderConfirmationImportWidget(QGroupBox):
             'Datei auswählen', parent=self.import_frame)
 
         txt = "ACHTUNG: Die Bestellbetätigungen werden "
-        txt += f"'hart' der Lieferantennummer '{self.seller_id}' zugeordnet!\n"
+        txt += f"'hart' der Lieferantennummer '{self.suppl_id}' zugeordnet!\n"
         txt += "Paxan muss also in der Anwendung mit genau dieser Nummer angelegt sein"
         self.lbl_hinweis_liefnr = QLabel(txt, self.import_frame)
         self.lbl_hinweis_liefnr.setStyleSheet(
@@ -74,7 +75,8 @@ class PaxanOrderConfirmationImportWidget(QGroupBox):
         try:
             evt = PaxanOrderConfirmationImportCmd(
                 filename=self.txt_selected_file.text(),
-                seller_id=self.seller_id
+                suppl_id=self.suppl_id,
+                suppl_name=self.suppl_name
             ).createEvent()
 
             self.evtStore.add_event(evt, expected_version=-1)

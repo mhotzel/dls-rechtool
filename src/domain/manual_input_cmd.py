@@ -22,7 +22,8 @@ class ManualDocumentPosition(BaseModel):
 
 class ManualDocument(BaseModel):
     """Ein Objekt, welches die manuelle Erfassung von Artikelpreisen ermöglicht"""
-    seller_id: str
+    suppl_id: str
+    suppl_name: str
     doc_type: str
     doc_id: str
     doc_date: date
@@ -31,7 +32,7 @@ class ManualDocument(BaseModel):
 
 def manualPositionsImportedEvent(doc: ManualDocument):
     """Erzeugt ein Event für ein Objekt mir manuell erfassten Positionen"""
-    subject: str = f"docid-{doc.doc_id}"
+    subject: str = f"docid-{doc.suppl_id}-{doc.doc_id}"
     evt = Event.createEvent(
         uuid.uuid1(),
         subject=subject,
