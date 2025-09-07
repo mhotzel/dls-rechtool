@@ -525,6 +525,8 @@ def test_rm_orderconf_edeka():
     res = conn.execute(sql2).fetchone()
     assert res['anz'] == 5
     
+    conn_mgr.close_all_connections()
+
     db_file.unlink(missing_ok=True)
 
 def test_rm_manualinvoice_utz():
@@ -589,5 +591,6 @@ def test_rm_manualinvoice_utz():
 
     res = conn.execute(sql2).fetchone()
     assert res['anz'] == 5
-    
-    # db_file.unlink(missing_ok=True)
+    conn_mgr.close_all_connections()
+
+    db_file.unlink(missing_ok=True)
