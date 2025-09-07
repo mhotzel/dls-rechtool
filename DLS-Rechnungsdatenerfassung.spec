@@ -1,11 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_data_files
+
+datas = [('src\\ui\\stylesheet.css', 'ui'), ('assets', 'assets')]
+datas += collect_data_files('ui')
 
 
 a = Analysis(
     ['src\\main.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=datas,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -21,7 +25,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='main',
+    name='DLS-Rechnungsdatenerfassung',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -40,5 +44,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='main',
+    name='DLS-Rechnungsdatenerfassung',
 )

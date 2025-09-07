@@ -1,5 +1,6 @@
 
 from contextlib import closing
+from importlib.resources import files
 from os import path
 import os
 from pathlib import Path
@@ -39,12 +40,8 @@ class SetupWindow(QMainWindow):
 
     def readStyleSheet(self) -> str:
         """liest das StyleSheet als String ein"""
-        file_path = Path(os.path.abspath(__file__)
-                         ).parent.joinpath('stylesheet.css')
-        with closing(open(file_path)) as infile:
-            styles = infile.read()
-        return styles
-
+        return files("ui").joinpath("stylesheet.css").read_text(encoding="utf-8")
+    
     def __setDesign(self) -> None:
         """Setzt die StyleSheets usw"""
         self.setStyleSheet(self.readStyleSheet())
