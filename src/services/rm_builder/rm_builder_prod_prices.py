@@ -68,6 +68,36 @@ def on_orderconfirmation_imported(data: Mapping, cur: Cursor) -> None:
                         issue_date, seller_assigned_id, global_id, name, price, updated_ts))
 
 
+def on_manualdoc_imported(data: Mapping, cur: Cursor) -> None:
+    """
+    Verarbeitet den Import eines manuellen Dokuments
+    Event: 'manual-doc.imported', Subject: 'docid-2-<docid>'
+    """
+    sql = """
+    INSERT INTO rm_product_list_t 
+    (suppl_id, suppl_name, issue_type, issue_id, issue_date, seller_assigned_id, global_id, name, price, updated_ts) 
+    VALUES
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT DO NOTHING
+    """
+
+    suppl_id = data['suppl_id']
+    suppl_name = data['suppl_name']
+    issue_type = data['doc_type']
+    issue_id = data['doc_id']
+    issue_date = data['doc_date']
+    positions = data['positions']
+    updated_ts = datetime.now(tz=timezone.utc).isoformat()
+
+    for pos in positions:
+        seller_assigned_id = pos['sellerAssignedId']
+        global_id = pos.get('globalId')
+        price = pos['price']
+        name = pos['name']
+
+        cur.execute(sql, (suppl_id, suppl_name, issue_type, issue_id,
+                        issue_date, seller_assigned_id, global_id, name, price, updated_ts))
+
 
 class RmProductListBuilder(ReadModelBaseBuilder):
     """
@@ -82,7 +112,8 @@ class RmProductListBuilder(ReadModelBaseBuilder):
             conn_mgr=conn_mgr,
             handlers={
                 'invoice.imported': on_invoice_imported,
-                'orderconf.imported': on_orderconfirmation_imported
+                'orderconf.imported': on_orderconfirmation_imported,
+                'manual-doc.imported': on_manualdoc_imported
             },
             target_table='rm_product_list_t'
         )

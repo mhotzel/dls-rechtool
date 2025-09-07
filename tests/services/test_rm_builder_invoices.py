@@ -260,6 +260,69 @@ data_invoice_edeka = """
 }
 """
 
+data_manu_invoice_utz = """
+    {
+        "suppl_id":"2",
+        "suppl_name":"Utz",
+        "doc_type":"invoice",
+        "doc_id":"rechnungutz4711",
+        "doc_date":"2025-09-01",
+        "positions":[
+            {
+                "idx":1,
+                "line_id":"1",
+                "sellerAssignedId":"4711",
+                "globalId":"1380016807",
+                "name":"Kiste Bier",
+                "price":25.0
+            },
+            {
+                "idx":2,
+                "line_id":"2",
+                "sellerAssignedId":"4712",
+                "globalId":null,
+                "name":"Wurstzipfel",
+                "price":1.99
+            }
+        ]
+    }
+"""
+
+data_manu_invoice_utz2 = """
+    {
+        "suppl_id":"2",
+        "suppl_name":"Utz",
+        "doc_type":"order",
+        "doc_id":"bestellung-utz-4712",
+        "doc_date":"2025-09-02",
+        "positions":[
+            {
+                "idx":1,
+                "line_id":"1",
+                "sellerAssignedId":"815",
+                "name":"Kiste Bier",
+                "price":25.0
+            },
+            {
+                "idx":2,
+                "line_id":"2",
+                "sellerAssignedId":"4712",
+                "globalId":null,
+                "name":"Wurstzipfel",
+                "price":1.99
+            },
+            {
+                "idx":3,
+                "line_id":"5",
+                "sellerAssignedId":"4712123",
+                "globalId":"qwertz",
+                "name":"Wurstzipfel",
+                "price":3.456
+            }
+        ]
+    }
+"""
+
 
 def test_initial_setup():
     """Testet den initialen Aufbau der Tabellen des ReadModels"""
@@ -450,6 +513,71 @@ def test_rm_orderconf_edeka():
         subject=f"orderconfirmation-1-E6642262250812085651",
         type='orderconf.imported',
         data=data_order_confirm_edeka2
+    )
+
+    evt_store.add_event(evt=evt, expected_version=-1)
+    rmw.run()
+    
+    conn = conn_mgr.get_connection()
+    res = conn.execute(sql1).fetchone()
+    assert res['anz'] == 1
+
+    res = conn.execute(sql2).fetchone()
+    assert res['anz'] == 5
+    
+    db_file.unlink(missing_ok=True)
+
+def test_rm_manualinvoice_utz():
+    """Testet die Verarbeitung von manueller Dokumente - hier Rechnungen von Utz"""
+
+    db_file = Path('testdb.sqlite')
+    ab_path = db_file.absolute()
+    db_file.unlink(missing_ok=True)
+
+    conn_mgr = SqliteConnectionManager()
+    conn_mgr.dbFile = str(db_file)
+    conn = conn_mgr.get_connection()
+    conn_mgr.close_connection()
+    evt_store = SqliteEventStore(conn_mgr)
+
+    evt = Event.createEvent(
+        id=uuid.uuid1(),
+        subject=f"docid-2-rechnungutz4711",
+        type='manual-doc.imported',
+        data=data_manu_invoice_utz
+    )
+
+    evt_store.add_event(evt=evt, expected_version=-1)
+
+    rmw = RmProductListBuilder(conn_mgr=conn_mgr)
+    rmw._initial_setup()
+
+    conn = conn_mgr.get_connection()
+    sql1 = 'SELECT COUNT(*) as anz FROM checkpoints_t'
+    sql2 = 'SELECT COUNT(*) as anz FROM rm_product_list_t'
+
+    res = conn.execute(sql1).fetchone()
+    assert res['anz'] == 0
+
+    res = conn.execute(sql2).fetchone()
+    assert res['anz'] == 0
+    conn_mgr.close_connection()
+    rmw.run()
+
+    conn = conn_mgr.get_connection()
+    res = conn.execute(sql1).fetchone()
+    assert res['anz'] == 1
+
+    res = conn.execute(sql2).fetchone()
+    assert res['anz'] == 2
+
+    conn_mgr.close_connection()
+
+    evt = Event.createEvent(
+        id=uuid.uuid1(),
+        subject=f"docid-2-bestellung-utz4712",
+        type='manual-doc.imported',
+        data=data_manu_invoice_utz2
     )
 
     evt_store.add_event(evt=evt, expected_version=-1)
