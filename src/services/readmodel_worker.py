@@ -26,3 +26,6 @@ class ReadModelWorker(ThreadWorker):
         for builder in self._handlers:
             builder.run()
 
+    def update(self) -> None:
+        """Convinience-Methode zum Senden einer Nachricht, um ein Update anzustoßen"""
+        self.send_message('update', '')

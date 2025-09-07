@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QShortcut, QKeySequence
 
 from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
@@ -89,14 +90,26 @@ class SupplierEditWidget(QGroupBox):
         self.btn_grp.layout().addStretch(1)
         self.btn_grp.layout().addWidget(self.btn_cancel)
         self.btn_grp.layout().addWidget(self.btn_ok)
-
         vlayout.addWidget(self.btn_grp)
+
+        # Für "Enter"
+        shortcut_return = QShortcut(QKeySequence(Qt.Key.Key_Return), self)
+        shortcut_return.activated.connect(self.btn_ok.click)
+
+        # Fürs NumPad
+        shortcut_enter = QShortcut(QKeySequence(Qt.Key.Key_Enter), self)
+        shortcut_enter.activated.connect(self.btn_ok.click)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.txt_suppl_id.setFocus()
 
     def clear_inputs(self) -> None:
         """Bricht die Bearbeitung ab"""
         self.txt_suppl_id.setText('')
         self.txt_suppl_name.setText('')
         self.txt_seller_id.setText('')
+        self.txt_suppl_id.setFocus()
 
     def save_supplier(self) -> None:
         """Speichert die Lieferantendaten"""

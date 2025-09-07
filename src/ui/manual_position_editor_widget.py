@@ -1,11 +1,11 @@
 from typing import List, MutableMapping, Tuple
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton,
-    QGroupBox, QFrame, QLineEdit, QHBoxLayout,
+    QGroupBox, QFrame, QLineEdit, QHBoxLayout, 
     QGridLayout, QLabel, QComboBox, QDateEdit, QHeaderView, QTableView, QMenu
 )
 
-from PySide6.QtGui import QIntValidator, QDoubleValidator, QAction
+from PySide6.QtGui import QIntValidator, QDoubleValidator, QAction, QShortcut, QKeySequence
 from PySide6.QtCore import Qt, QDate, QAbstractTableModel, QModelIndex, QLocale, QPoint
 
 
@@ -168,6 +168,15 @@ class PositionEditorWidget(QGroupBox):
         self.btn_grp.layout().addStretch(1)
         self.btn_grp.layout().addWidget(self.btn_clean)
         self.btn_grp.layout().addWidget(self.btn_ok)
+
+        # Für "Enter"
+        shortcut_return = QShortcut(QKeySequence(Qt.Key.Key_Return), self)
+        shortcut_return.activated.connect(self.btn_ok.click)
+
+        # Fürs NumPad
+        shortcut_enter = QShortcut(QKeySequence(Qt.Key.Key_Enter), self)
+        shortcut_enter.activated.connect(self.btn_ok.click)
+
         layout.addWidget(self.btn_grp)
 
         # Kontextmenü per Rechtsklick aktivieren
@@ -402,3 +411,5 @@ class ManualPositionEditorWidget(QGroupBox):
         self.positions_widget.txtName.setText('')
         self.positions_widget.txtSellerAssignedId.setText('')
         self.positions_widget.txtPrice.setText('')
+        self.positions_widget.txtLfdNr.setFocus()
+

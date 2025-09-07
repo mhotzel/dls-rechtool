@@ -42,9 +42,9 @@ class ApplicationContext:
             self.conn_manager.dbFile = str(dbfile)
             self.event_store = SqliteEventStore(self.conn_manager)
             self.rm_model_worker = ReadModelWorker(self.conn_manager)
-            self.rm_model_worker.start()
             self.event_store.add_listener(lambda evt: self.rm_model_worker.update())
-
+            self.rm_model_worker.start()
+            
             self.mainWindow = MainWindow(
                 self.event_dispatcher, self.event_store)
 
