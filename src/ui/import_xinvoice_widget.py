@@ -32,6 +32,7 @@ class ImportEInvoice(QGroupBox):
         self.supplierReader = SupplierReader(self.evtStore)
         self.invoice_doc: ZugferdInvoiceDocument = None
         self.__build_ui()
+        self.event_dispatcher.register('invoice-positions-loaded', lambda e: self.check_import_ready())
 
     def __build_ui(self):
         """Baut die Oberfläche"""
@@ -50,7 +51,7 @@ class ImportEInvoice(QGroupBox):
         self.cmbSupplier = QComboBox(self, editable=False)
         self.cmbSupplier.addItem('<keiner>', None)
         self.cmbSupplier.currentIndexChanged.connect(
-            lambda evt: self.supplier_selected())
+            lambda evt: self.check_import_ready())
 
         __headLayout.addWidget(self.lblSelectSupplier, 0, 0)
         __headLayout.addWidget(self.cmbSupplier, 0, 1, 1, 2)
@@ -124,12 +125,21 @@ class ImportEInvoice(QGroupBox):
             )
         )
 
-    def supplier_selected(self):
-        """Es wurde ein Lieferant gewählt"""
-        if self.cmbSupplier.currentData() and self.invoiceWidget.invoice_model_filled:
+    def check_import_ready(self) -> None:
+        """Prueft, ob die Rechnung gespeichert werden kann"""
+        if self.cmbSupplier.currentData() and self.invoiceWidget.tableWidget.model():
             self.btnSaveInVoice.setEnabled(True)
         else:
             self.btnSaveInVoice.setEnabled(False)
+
+    def clear_inputs(self):
+        """Setzt die Eingabefelder zurück"""
+        self.cmbSupplier.setCurrentIndex(0)
+        self.txtFldInvoiceDate.setText('')
+        self.txtFldInvoiceNr.setText('')
+        self.txtFldSupplier.setText('')
+        self.invoice_doc = None
+        self.invoiceWidget.tableWidget.setModel(None)
 
     def save_invoice(self):
         """Speichert die Rechnungspositionen in der Datenbank"""
@@ -148,6 +158,7 @@ class ImportEInvoice(QGroupBox):
                     evt_type='status-message',
                     evt_data='Rechnungsdaten wurden gespeichert')
             )
+            self.clear_inputs()
         except Exception as e:
             self.event_dispatcher.send(
                 AppEvent(

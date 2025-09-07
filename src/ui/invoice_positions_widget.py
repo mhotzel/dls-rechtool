@@ -1,7 +1,8 @@
-from typing import Sequence
+from typing import List, Sequence
 from PySide6.QtWidgets import QTableView, QGroupBox, QWidget, QHBoxLayout, QHeaderView
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 
+from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
 from domain.fakturx_invoice import FakturXInvoicePosition
 import locale
@@ -117,6 +118,7 @@ class InvoicePositionsWidget(QGroupBox):
                     i, QHeaderView.ResizeMode.ResizeToContents)
             
         self.invoice_model_filled = True
+        self.evt_dispatcher.send(AppEvent(evt_type='invoice-positions-loaded'))
 
     def __build_ui(self) -> None:
         """Baut die Oberfläche"""

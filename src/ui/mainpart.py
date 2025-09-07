@@ -3,7 +3,7 @@ from application.app_event import AppEvent
 from services.event_store.eventstore import EventStore
 from ui.edeka_orderconf_widget import EdekaOrderConfirmationImportWidget
 from ui.empty_widget import EmptyPane
-from ui.import_xinvoice import ImportEInvoice
+from ui.import_xinvoice_widget import ImportEInvoice
 from ui.manual_position_editor_widget import ManualPositionEditorWidget
 from ui.paxan_orderconf_widget import PaxanOrderConfirmationImportWidget
 from ui.suppliers_editor import SuppliersEditorWidget
