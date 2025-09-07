@@ -32,7 +32,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['src\\assets\\favicon_48x48.ico'],
+    icon=['src\\assets\\favicon256x256.ico'],
 )
 coll = COLLECT(
     exe,

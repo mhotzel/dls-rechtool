@@ -1,1 +1,1 @@
-uv run pyinstaller src\main.py -n "DLS-EK-Erfassung" --onedir -w -i src\assets\favicon_48x48.ico --add-data "src\assets;assets" --add-data "src\ui;ui"
+uv run pyinstaller src\main.py -n "DLS-EK-Erfassung" --onedir -w -i src\assets\favicon256x256.ico --add-data "src\assets;assets" --add-data "src\ui;ui"
