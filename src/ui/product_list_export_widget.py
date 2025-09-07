@@ -55,7 +55,7 @@ class ProdListExportWidget(QGroupBox):
             '', parent=self.export_frame, readOnly=True)
 
         self.btn_start_export = QPushButton(
-            'Import starten', parent=self.export_frame)
+            'Export starten', parent=self.export_frame)
         self.btn_start_export.clicked.connect(lambda evt: self.start_export())
         self.btn_start_export.setEnabled(False)
         self.export_frame.layout().addWidget(self.btn_select_folder)
