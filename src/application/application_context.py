@@ -3,6 +3,7 @@ from services.event_store.sqlite_eventstore import SqliteEventStore, SqliteConne
 from services.config_service import ConfigService
 from PySide6.QtWidgets import QApplication
 from services.readmodel_worker import ReadModelWorker
+from services.readmodels.sqlite_data_store import SqliteDataStore
 from ui.setup_window import SetupWindow
 from ui.main_window import MainWindow
 
@@ -41,12 +42,13 @@ class ApplicationContext:
             self.conn_manager = SqliteConnectionManager()
             self.conn_manager.dbFile = str(dbfile)
             self.event_store = SqliteEventStore(self.conn_manager)
+            self.data_store = SqliteDataStore(self.conn_manager)
             self.rm_model_worker = ReadModelWorker(self.conn_manager)
             self.event_store.add_listener(lambda evt: self.rm_model_worker.update())
             self.rm_model_worker.start()
             
             self.mainWindow = MainWindow(
-                self.event_dispatcher, self.event_store)
+                self.event_dispatcher, self.event_store, self.data_store)
 
             self.mainWindow.show()
             self.qApp.exec()

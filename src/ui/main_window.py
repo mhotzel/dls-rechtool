@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from application.app_event import AppEvent
 from services.event_store.eventstore import EventStore
+from services.readmodels.base_data_store import DataStore
 from ui.leftbar import LeftBar
 from ui.mainpart import MainPart
 
@@ -16,12 +17,13 @@ from ui.status_msg_widget import StatusMessageWidget
 
 class MainWindow(QMainWindow):
 
-    def __init__(self, eventDispatcher: EventDispatcher, evtStore: EventStore):
+    def __init__(self, eventDispatcher: EventDispatcher, evtStore: EventStore, dataStore: DataStore):
         super().__init__()
         self.evtStore = evtStore
         self.setWindowTitle("DLS - Rechnungs- und Lieferantendatenerfassung")
         self.event_dispatcher: EventDispatcher = eventDispatcher
         self.evtStore: EventStore = evtStore
+        self.dataStore = dataStore
         self._buildGui()
         self._addMenus()
         self.setWindowIcon(self._createIcons())
@@ -66,7 +68,7 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(_centralWidget)
         self.leftBar = LeftBar(_centralWidget, self.event_dispatcher)
-        self.main_part = MainPart(_centralWidget, self.event_dispatcher, self.evtStore)
+        self.main_part = MainPart(_centralWidget, self.event_dispatcher, self.evtStore, self.dataStore)
         self.status_widget = StatusMessageWidget(_centralWidget, self.event_dispatcher)
 
         self.leftBar.setSizePolicy(QSizePolicy.Policy.Fixed,

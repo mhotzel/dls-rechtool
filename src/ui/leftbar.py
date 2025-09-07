@@ -52,8 +52,18 @@ class LeftBar(QFrame):
             )
         )
         self.btn_map_gtin = QPushButton("GTIN/EAN nachpflegen")
+        self.btn_map_gtin.setEnabled(False)
+        self.btn_map_gtin.setToolTip('Noch nicht eingebaut')
+
         self.btn_export_articles = QPushButton("Artikel exportieren")
+        self.btn_export_articles.clicked.connect(
+            lambda evt: self.event_dispatcher.send(AppEvent(evt_type='export-prodlist'))
+        )
+        
         self.btn_price_viewer = QPushButton('Preise anzeigen und rechnen')
+        self.btn_price_viewer.setEnabled(False)
+        self.btn_price_viewer.setToolTip('Noch nicht eingebaut')
+
         self.innerFrame.setLayout(QVBoxLayout())
         self.innerFrame.layout().addWidget(self.btn_config)
         self.innerFrame.layout().addWidget(self.btn_editsuppliers)
