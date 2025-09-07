@@ -9,13 +9,13 @@ from pydantic import BaseModel
 class Product(BaseModel):
     """Ein Artikel samt Herkunft"""
     suppl_id: str
-    suppl_name: str
+    suppl_name: str | None = None
     issue_type: str
     issue_id: str
     issue_date: date
     seller_assigned_id: str
-    global_id: str
-    name: str
+    global_id: str | None=None
+    name: str | None = None
     price: float
 
 
