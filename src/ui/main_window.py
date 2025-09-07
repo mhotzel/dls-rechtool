@@ -1,5 +1,5 @@
 from contextlib import closing
-from importlib.resources import files
+from importlib.resources import files, as_file
 from os import path
 import os
 from pathlib import Path
@@ -31,13 +31,12 @@ class MainWindow(QMainWindow):
 
     def _createIcons(self):
         my_icon = QIcon()
-        my_icon.addFile(path.join('assets', 'favicon16x16.jpg'), QSize(16, 16))
-        my_icon.addFile(path.join('assets', 'favicon24x24.jpg'), QSize(24, 24))
-        my_icon.addFile(path.join('assets', 'favicon32x32.jpg'), QSize(32, 32))
-        my_icon.addFile(path.join('assets', 'favicon48x48.jpg'), QSize(48, 48))
-        my_icon.addFile(path.join('assets', 'favicon64x64.jpg'), QSize(64, 64))
-        my_icon.addFile(
-            path.join('assets', 'favicon256x256.jpg'), QSize(256, 256))
+        my_icon.addFile(str(files('assets') / 'favicon16x16.jpg'), QSize(16, 16))
+        my_icon.addFile(str(files('assets') / 'favicon24x24.jpg'), QSize(24, 24))
+        my_icon.addFile(str(files('assets') / 'favicon32x32.jpg'), QSize(32, 32))
+        my_icon.addFile(str(files('assets') / 'favicon48x48.jpg'), QSize(48, 48))
+        my_icon.addFile(str(files('assets') / 'favicon64x64.jpg'), QSize(64, 64))
+        my_icon.addFile(str(files('assets') / 'favicon256x256.jpg'), QSize(256, 256))
         return my_icon
 
     def _addMenus(self):

@@ -1,8 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_data_files
 
-datas = [('src\\ui\\stylesheet.css', 'ui'), ('assets', 'assets')]
+datas = [('src\\ui\\stylesheet.css', 'ui'), ('src\\assets', 'assets')]
 datas += collect_data_files('ui')
+datas += collect_data_files('assets')
 
 
 a = Analysis(
