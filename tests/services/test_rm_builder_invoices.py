@@ -8,7 +8,7 @@ import uuid
 from services.event_store.event import Event
 from services.event_store.sqlite_eventstore import SqliteEventStore
 from services.rm_builder.rm_builder_prod_prices import RmProductListBuilder
-from services.rm_builder.rm_builder_supplier import ReadModelSupplierBuilder
+from services.rm_builder.rm_builder_supplier import RmSupplierBuilder
 from services.sqlite_conn_manager import SqliteConnectionManager
 
 

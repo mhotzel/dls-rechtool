@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Callable, List, MutableMapping, Sequence
+from typing import Callable, Sequence, Set
 from services.sqlite_conn_manager import SqliteConnectionManager
 from services.event_store.eventstore import ConcurrencyError, EventStore
 from services.event_store.event import Event
@@ -41,7 +41,12 @@ class SqliteEventStore(EventStore):
 
     def __init__(self, conn_manager: SqliteConnectionManager = None):
         super().__init__()
+        self._listeners: Set[Callable[[Event], None]] = set()
         self.conn_manager = conn_manager
+
+    def add_listener(self, listener_func: Callable[[Event], None]):
+        """Fügt eine Funktion als Listener ein, die auf neue Events reagiert"""
+        self._listeners.add(listener_func)
 
     @property
     def conn_manager(self) -> SqliteConnectionManager:
@@ -112,6 +117,9 @@ class SqliteEventStore(EventStore):
 
             next_version += 1
             conn.commit()
+            
+            for listener in self._listeners:
+                listener(evt)
 
         except Exception:
             conn.rollback()

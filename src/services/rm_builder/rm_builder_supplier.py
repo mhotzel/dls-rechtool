@@ -1,9 +1,30 @@
 
+from datetime import datetime, timezone
+from sqlite3 import Cursor
 from typing import Mapping
 from services.rm_builder.rm_builder_base import ReadModelBaseBuilder, ReadModelEventHandler
 from services.sqlite_conn_manager import SqliteConnectionManager
 
-class ReadModelSupplierBuilder(ReadModelBaseBuilder):
+
+def on_supplier_onboarded(data: Mapping, cur: Cursor) -> None:
+    """Verarbeitet das Onboarden eines Lieferanten"""
+    sql = """
+    INSERT INTO rm_suppliers_t 
+    (suppl_id, suppl_name, updated_ts) 
+    VALUES
+    (?, ?, ?)
+    ON CONFLICT (suppl_id) DO NOTHING
+    """
+
+    suppl_id = data['suppl_id']
+    suppl_name = data['suppl_name']
+    seller_id = data.get('seller_id')
+    ts = datetime.now(tz=timezone.utc).isoformat()
+
+    cur.execute(sql, (suppl_id, suppl_name, ts))
+
+
+class RmSupplierBuilder(ReadModelBaseBuilder):
     """
     Implementiert einen Projektor auf einem EventStore,
     der beim Start alle noch nicht verarbeiteten Events
@@ -12,11 +33,15 @@ class ReadModelSupplierBuilder(ReadModelBaseBuilder):
     """
 
     def __init__(
-        self, conn_mgr: SqliteConnectionManager,
-        handlers: Mapping[str, ReadModelEventHandler],
-        target_table: str
+        self, conn_mgr: SqliteConnectionManager
     ):
-        super().__init__(conn_mgr, handlers, target_table)
+        super().__init__(
+            conn_mgr,
+            handlers={
+                'supplier.onboarded': on_supplier_onboarded
+            },
+            target_table='rm_suppliers_t'
+        )
 
     def _initial_setup(self) -> None:
         """

@@ -42,7 +42,7 @@ class ThreadWorker(ABC):
         self.__stopping = False
         self.__thread = Thread(target=self.__run, name=self._name, daemon=True)
         self.__thread.start()
-        self._emit(Status(evt_type="startup"))
+        self._emit(Status(evt_type="STARTED"))
 
     def on_start(self) -> bool:
         """
@@ -107,11 +107,12 @@ class ThreadWorker(ABC):
                         break
                     else:
                         self.on_message(msg)
+                        self._emit(Status(evt_type='RUNNED'))
                 except Exception as e:
-                    self._emit(Status(evt_type="fatal", payload=str(e)))
+                    self._emit(Status(evt_type="Exception", payload=str(e), evt_warn_lvl="ERROR"))
                 finally:
                     self.__in_queue.task_done()
 
         except Exception as e:
             # hier ggf. Logging/Callback einbauen
-            self._emit(Status(evt_type="stopped", payload=str(e)))
+            self._emit(Status(evt_type="STOPPED", payload=str(e), evt_warn_lvl="FATAL"))

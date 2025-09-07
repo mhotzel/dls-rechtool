@@ -145,7 +145,7 @@ class RmProductListBuilder(ReadModelBaseBuilder):
         )        
         ""","""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_rm_product_list ON rm_product_list_t(
-            issue_id, seller_assigned_id, issue_type
+            suppl_id, issue_id, seller_assigned_id, issue_type
         )
         """
         ]
