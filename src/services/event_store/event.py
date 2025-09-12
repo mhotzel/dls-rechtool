@@ -12,6 +12,8 @@ class EvtTypes(Enum):
     ORDERCONF_IMPORTED = 'orderconf.imported'
     GENERIC_INVOICE_IMPORTED = 'generic-invoice.imported'
     GENERIC_ORDER_IMPORTED = 'generic-order.imported'
+    DOCUMENT_VOIDED = 'document.voided'
+    DOCUMENT_UNVOIDED = 'document.unvoided'
 
 
 class Event(BaseModel):

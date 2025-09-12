@@ -49,7 +49,7 @@ class SqliteDataStore(DataStore):
         """Liefert die Liste aller Dokumente"""
 
         sql = """
-        SELECT suppl_id, suppl_name, doc_id, doc_type, doc_date, doc_state, updated_ts FROM rm_documents_t
+        SELECT subject, suppl_id, suppl_name, doc_id, doc_type, doc_date, doc_state, updated_ts FROM rm_documents_t
         """
         doclist: List[Document] = []
         

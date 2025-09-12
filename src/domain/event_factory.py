@@ -1,6 +1,7 @@
 """Unterstützt die Erzeugung fachlicher Events"""
 
 from datetime import date
+import json
 from urllib.parse import quote
 from typing import List
 import uuid
@@ -130,5 +131,27 @@ def generic_order_imported_event(doc: GenericOrder) -> Event:
         subject=subject,
         type=EvtTypes.GENERIC_ORDER_IMPORTED,
         data=doc.model_dump_json()
+    )
+    return evt
+
+def document_voided_event(subject: str) -> Event:
+
+    subject = build_stream_id(subject)
+    evt = Event.createEvent(
+        uuid.uuid1(),
+        subject=subject,
+        type=EvtTypes.DOCUMENT_VOIDED,
+        data=json.dumps(dict(), ensure_ascii=False)
+    )
+    return evt
+
+def document_unvoided_event(subject: str) -> Event:
+
+    subject = build_stream_id(subject)
+    evt = Event.createEvent(
+        uuid.uuid1(),
+        subject=subject,
+        type=EvtTypes.DOCUMENT_UNVOIDED,
+        data=json.dumps(dict(), ensure_ascii=False)
     )
     return evt

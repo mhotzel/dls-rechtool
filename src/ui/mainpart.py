@@ -68,7 +68,7 @@ class MainPart(QStackedWidget):
         self.export_prod_list_widget = ProdListExportWidget(self, self.event_dispatcher, self.dataStore)
         self.addWidget(self.export_prod_list_widget)
 
-        self.issue_correction_widget = IssueCorrectionWidget(self, self.event_dispatcher, self.evtStore)
+        self.issue_correction_widget = IssueCorrectionWidget(self, self.event_dispatcher, self.evtStore, self.dataStore)
         self.addWidget(self.issue_correction_widget)
 
         self.setCurrentWidget(self.emptyWidget)

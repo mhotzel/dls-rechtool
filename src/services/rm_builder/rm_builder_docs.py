@@ -10,6 +10,7 @@ from services.sqlite_conn_manager import SqliteConnectionManager
 INITIAL_TABLE_SETUP = [
     """
 CREATE TABLE IF NOT EXISTS rm_documents_t (
+    subject TEXT NOT NULL,
     suppl_id TEXT NOT NULL,
     suppl_name TEXT,
     doc_id TEXT NOT NULL,
@@ -20,7 +21,7 @@ CREATE TABLE IF NOT EXISTS rm_documents_t (
 )
 """, """
 CREATE UNIQUE INDEX IF NOT EXISTS idx_rm_documents ON rm_documents_t(
-    suppl_id, doc_id, doc_type
+    subject
 )
 """, """
 CREATE TABLE IF NOT EXISTS checkpoints_t (
@@ -35,9 +36,9 @@ def on_invoice_imported(data: Mapping, cur: Cursor) -> List[Exception]:
 
     sql = """
     INSERT INTO rm_documents_t
-    (suppl_id, suppl_name, doc_id, doc_type, doc_date, doc_state, updated_ts)
+    (subject, suppl_id, suppl_name, doc_id, doc_type, doc_date, doc_state, updated_ts)
     VALUES
-    (?, ?, ?, ?, ?, ?, ?)
+    (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT DO NOTHING
     """
 
@@ -47,6 +48,7 @@ def on_invoice_imported(data: Mapping, cur: Cursor) -> List[Exception]:
 
     try:
         cur.execute(sql, (
+            data['subject'],
             data['invoice_seller_id'],
             data['invoice_seller_name'],
             data['invoice_id'],
@@ -63,9 +65,9 @@ def on_invoice_imported(data: Mapping, cur: Cursor) -> List[Exception]:
 def on_orderconfirmation_imported(data: Mapping, cur: Cursor) -> List[Exception]:
     sql = """
     INSERT INTO rm_documents_t
-    (suppl_id, suppl_name, doc_id, doc_type, doc_date, doc_state, updated_ts)
+    (subject, suppl_id, suppl_name, doc_id, doc_type, doc_date, doc_state, updated_ts)
     VALUES
-    (?, ?, ?, ?, ?, ?, ?)
+    (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT DO NOTHING
     """
 
@@ -75,6 +77,7 @@ def on_orderconfirmation_imported(data: Mapping, cur: Cursor) -> List[Exception]
 
     try:
         cur.execute(sql, (
+            data['subject'],
             data['suppl_id'],
             data['suppl_name'],
             data['order_confirm_id'],
@@ -92,9 +95,9 @@ def on_orderconfirmation_imported(data: Mapping, cur: Cursor) -> List[Exception]
 def on_generic_invoice_imported(data: Mapping, cur: Cursor) -> List[Exception]:
     sql = """
     INSERT INTO rm_documents_t
-    (suppl_id, suppl_name, doc_id, doc_type, doc_date, doc_state, updated_ts)
+    (subject, suppl_id, suppl_name, doc_id, doc_type, doc_date, doc_state, updated_ts)
     VALUES
-    (?, ?, ?, ?, ?, ?, ?)
+    (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT DO NOTHING
     """
 
@@ -104,6 +107,7 @@ def on_generic_invoice_imported(data: Mapping, cur: Cursor) -> List[Exception]:
 
     try:
         cur.execute(sql, (
+            data['subject'],
             data['suppl_id'],
             data['suppl_name'],
             data['invoice_id'],
@@ -121,9 +125,9 @@ def on_generic_invoice_imported(data: Mapping, cur: Cursor) -> List[Exception]:
 def on_generic_order_imported(data: Mapping, cur: Cursor) -> List[Exception]:
     sql = """
     INSERT INTO rm_documents_t
-    (suppl_id, suppl_name, doc_id, doc_type, doc_date, doc_state, updated_ts)
+    (subject, suppl_id, suppl_name, doc_id, doc_type, doc_date, doc_state, updated_ts)
     VALUES
-    (?, ?, ?, ?, ?, ?, ?)
+    (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT DO NOTHING
     """
 
@@ -133,6 +137,7 @@ def on_generic_order_imported(data: Mapping, cur: Cursor) -> List[Exception]:
 
     try:
         cur.execute(sql, (
+            data['subject'],
             data['suppl_id'],
             data['suppl_name'],
             data['order_id'],
@@ -146,6 +151,43 @@ def on_generic_order_imported(data: Mapping, cur: Cursor) -> List[Exception]:
 
     return errors
 
+def on_document_voided(data: Mapping, cur: Cursor) -> List[Exception]:
+    sql = """
+    UPDATE rm_documents_t SET doc_state='VOIDED', updated_ts=? WHERE subject=?
+    """
+
+    now = datetime.now(tz=timezone.utc)
+
+    errors: List[Exception] = []
+
+    try:
+        cur.execute(sql, (
+            now.isoformat(),
+            data['subject'],
+        ))
+    except Exception as e:
+        errors.append(e)
+
+    return errors
+
+def on_document_unvoided(data: Mapping, cur: Cursor) -> List[Exception]:
+    sql = """
+    UPDATE rm_documents_t SET doc_state=NULL, updated_ts=? WHERE subject=?
+    """
+
+    now = datetime.now(tz=timezone.utc)
+
+    errors: List[Exception] = []
+
+    try:
+        cur.execute(sql, (
+            now.isoformat(),
+            data['subject'],
+        ))
+    except Exception as e:
+        errors.append(e)
+
+    return errors
 
 class RmDocumentListBuilder(ReadModelBaseBuilder):
     """Schreibt das ReadModel der Rechnungs- und Bestellungstabelle"""
@@ -158,7 +200,9 @@ class RmDocumentListBuilder(ReadModelBaseBuilder):
             EvtTypes.INVOICE_IMPORTED.value: on_invoice_imported,
             EvtTypes.ORDERCONF_IMPORTED.value: on_orderconfirmation_imported,
             EvtTypes.GENERIC_INVOICE_IMPORTED.value: on_generic_invoice_imported,
-            EvtTypes.GENERIC_ORDER_IMPORTED.value: on_generic_order_imported
+            EvtTypes.GENERIC_ORDER_IMPORTED.value: on_generic_order_imported,
+            EvtTypes.DOCUMENT_VOIDED.value: on_document_voided,
+            EvtTypes.DOCUMENT_UNVOIDED.value: on_document_unvoided
         }
         super().__init__(conn_mgr, self.handlers, 'rm_documents_t', self.status_queue)
 

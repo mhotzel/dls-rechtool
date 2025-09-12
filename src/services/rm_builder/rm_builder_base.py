@@ -79,7 +79,7 @@ class ReadModelBaseBuilder(ABC):
         events_str = ', '.join(events)
 
         sql = f"""
-        SELECT evt.position, evt.type, evt.data
+        SELECT evt.position, evt.type, evt.subject, evt.data
         FROM events_t AS evt
         WHERE evt.position > ?
         AND evt.type IN ({events_str})
@@ -100,6 +100,7 @@ class ReadModelBaseBuilder(ABC):
             new_last_pos = last_pos
             for row in rows:
                 data = json.loads(row['data'])
+                data['subject'] = row['subject']
                 new_last_pos = row['position']
                 evt_type = row['type']
                 handler = self._handlers[evt_type]
