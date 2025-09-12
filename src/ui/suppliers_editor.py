@@ -12,7 +12,7 @@ from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
 from domain.onboard_supplier_cmd import OnboardSupplierCommand, SupplierAlreadyExistsException
 from domain.supplier_reader import SupplierReader
-from domain.suppliers import Supplier
+from domain.event_factory import Supplier, supplier_onboarded_event
 from services.event_store.eventstore import EventStore
 from services.event_store.event import Event
 
@@ -123,12 +123,7 @@ class SupplierEditWidget(QGroupBox):
                 seller_id=self.txt_seller_id.text()
             )()
 
-            evt = Event.createEvent(
-                id=uuid.uuid1(),
-                subject=f"supplier-{supplier.suppl_id}",
-                type='supplier.onboarded',
-                data=supplier.model_dump_json()
-            )
+            evt = supplier_onboarded_event(supplier=supplier)
 
             self.evtStore.add_event(evt, expected_version=-1)
             self.evt_dispatcher.send(
@@ -154,9 +149,8 @@ class SupplierEditWidget(QGroupBox):
             )
 
         except ValueError as ve:
-            msg = ve.args[0]
             QMessageBox.critical(
-                self, 'Fehler bei der Anlage des Lieferanten', msg)
+                self, 'Fehler bei der Anlage des Lieferanten', ve.args)
             self.evt_dispatcher.send(
                 AppEvent(
                     evt_lvl=LogLevel.CRITICAL,

@@ -11,7 +11,7 @@ from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
 from domain.import_xinvoice_cmd import ImportXInvoiceCmd
 from domain.supplier_reader import SupplierReader
-from domain.suppliers import Supplier
+from domain.event_factory import Supplier
 from domain.zugferd_invoice import ZugferdInvoiceDocument
 from services.event_store.eventstore import EventStore
 from ui.invoice_positions_widget import InvoicePositionsWidget

@@ -2,11 +2,13 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 import json
+from queue import SimpleQueue
 from sqlite3 import Cursor
-from typing import Callable, Mapping
+from typing import Callable, List, Mapping
+from application.app_event import AppEvent, LogLevel
 from services.sqlite_conn_manager import SqliteConnectionManager
 
-ReadModelEventHandler = Callable[[Cursor, Mapping], None]
+ReadModelEventHandler = Callable[[Cursor, Mapping], List[Exception]]
 
 
 def set_last_position(new_pos: int, rm_table: str, cur: Cursor):
@@ -51,12 +53,13 @@ class ReadModelBaseBuilder(ABC):
     def __init__(
         self, conn_mgr: SqliteConnectionManager,
         handlers: Mapping[str, ReadModelEventHandler],
-        target_table: str
+        target_table: str,
+        status_queue: SimpleQueue
     ):
         self.conn_mgr = conn_mgr
         self._handlers = handlers
         self._target_table = target_table
-
+        self.status_queue = status_queue
         self._initial_setup()
 
     @abstractmethod
@@ -100,7 +103,10 @@ class ReadModelBaseBuilder(ABC):
                 new_last_pos = row['position']
                 evt_type = row['type']
                 handler = self._handlers[evt_type]
-                handler(data, cur)
+                errors = handler(data, cur)
+                if errors:
+                    for e in errors:
+                        self.status_queue.put(AppEvent(evt_lvl=LogLevel.CRITICAL, evt_type='status-message', evt_data=e))
 
             set_last_position(new_last_pos, self._target_table, cur)
             conn.commit()

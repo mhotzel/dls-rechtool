@@ -6,7 +6,8 @@ import re
 import uuid
 
 from application.app_event import AppEvent
-from domain.order_confirmation import OrderConfirmation, OrderItem
+from domain.event_factory import orderconfirmation_imported_event
+from domain.order_confirmation import OrderConfirmation, OrderConfItem
 from services.event_store.event import Event
 
 
@@ -31,7 +32,7 @@ class PaxanOrderConfirmationImportCmd:
             order_conf = OrderConfirmation(
                 suppl_id=self.suppl_id,
                 suppl_name=self.suppl_name,
-                order_confirm=self.order_id,
+                order_confirm_id=self.order_id,
                 # erstmal ein Dummy, wird mit der ersten Position gefixt
                 order_date=datetime.now().date()
             )
@@ -47,7 +48,7 @@ class PaxanOrderConfirmationImportCmd:
                 price = self.getFloat(row['Preis'])
                 order_conf.order_date = order_date
 
-                item = OrderItem(
+                item = OrderConfItem(
                     idx=position,
                     seller_assigned_id=seller_assigned_id,
                     global_id=global_id,
@@ -57,13 +58,7 @@ class PaxanOrderConfirmationImportCmd:
                 )
                 order_conf.positions.append(item)
 
-        subject = f'orderconfirmation-{order_conf.suppl_id}-{order_conf.order_confirm}'
-        evt = Event.createEvent(
-            uuid.uuid1(),
-            subject=subject,
-            type='orderconf.imported',
-            data=order_conf.model_dump_json()
-        )
+        evt = orderconfirmation_imported_event(order_conf)
         return evt
 
     def getFloat(self, data: str) -> float:

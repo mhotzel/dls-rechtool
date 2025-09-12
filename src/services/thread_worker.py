@@ -1,10 +1,11 @@
 from abc import ABC
+from enum import Enum
 from queue import Queue, SimpleQueue
 from threading import Thread
+import traceback
 from typing import Optional
 
 from pydantic import BaseModel
-
 
 class Status(BaseModel):
     evt_warn_lvl: str = ''
@@ -27,9 +28,9 @@ class ThreadWorker(ABC):
     Aufruf der Methode 'stop()' aufgerufen.
     """
 
-    def __init__(self, name: str = "Worker"):
+    def __init__(self, name: str, status_queue: SimpleQueue):
         self.__in_queue: Queue[Message] = Queue(maxsize=5)
-        self.__out_queue: SimpleQueue[Status] = SimpleQueue()
+        self.__out_queue: SimpleQueue[Status] = status_queue
         self.__thread: Optional[Thread] = None
         self._name = name
         self.__stopping = False
@@ -42,7 +43,7 @@ class ThreadWorker(ABC):
         self.__stopping = False
         self.__thread = Thread(target=self.__run, name=self._name, daemon=True)
         self.__thread.start()
-        self._emit(Status(evt_type="STARTED"))
+        self._emit(Status(evt_type='THREADWORKER', payload='Lesemodell-Aufbereitung ist gestartet'))
 
     def on_start(self) -> bool:
         """
@@ -107,12 +108,13 @@ class ThreadWorker(ABC):
                         break
                     else:
                         self.on_message(msg)
-                        self._emit(Status(evt_type='RUNNED'))
                 except Exception as e:
                     self._emit(Status(evt_type="Exception", payload=str(e), evt_warn_lvl="ERROR"))
+                    print(f"Fehler im Workers: {e}")
                 finally:
                     self.__in_queue.task_done()
 
         except Exception as e:
             # hier ggf. Logging/Callback einbauen
             self._emit(Status(evt_type="STOPPED", payload=str(e), evt_warn_lvl="FATAL"))
+            print(f"Abbruch des Workers: {traceback.format_exc()}")

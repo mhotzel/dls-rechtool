@@ -13,7 +13,8 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
-from domain.order_confirmation import OrderConfirmation, OrderItem
+from domain.event_factory import orderconfirmation_imported_event
+from domain.order_confirmation import OrderConfirmation, OrderConfItem
 from services.event_store.eventstore import EventStore, Event
 
 
@@ -95,7 +96,7 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
             filename,
             read_only=True, data_only=True)
         ws: Worksheet = wb.worksheets[0]
-        item: OrderItem = None
+        item: OrderConfItem = None
         order_conf_map: MutableMapping[str, OrderConfirmation] = dict()
 
         try:
@@ -107,12 +108,12 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
                     order_conf_map[order_confirmation_id] = OrderConfirmation(
                         suppl_id='1',
                         suppl_name='EDEKA',
-                        order_confirm=order_confirmation_id,
+                        order_confirm_id=order_confirmation_id,
                         order_date=row[8].date(),
                         positions=[]
                     )
 
-                item = OrderItem(
+                item = OrderConfItem(
                     idx=row[0],
                     seller_assigned_id=row[2],
                     global_id=row[3],
@@ -133,12 +134,8 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
                 )
 
             for key, orderconf in order_conf_map.items():
-                evt = Event.createEvent(
-                    id=uuid.uuid1(),
-                    subject=f'orderconfirmation-{orderconf.suppl_id}-{orderconf.order_confirm}',
-                    type='orderconf.imported',
-                    data=orderconf.model_dump_json()
-                )
+                evt = orderconfirmation_imported_event(orderconf)
+
                 self.evtStore.add_event(evt=evt, expected_version=-1)
                 self.statusSignal.emit(
                     AppEvent(

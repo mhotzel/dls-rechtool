@@ -1,3 +1,4 @@
+from queue import SimpleQueue
 import sys
 from services.event_store.sqlite_eventstore import SqliteEventStore, SqliteConnectionManager
 from services.config_service import ConfigService
@@ -21,6 +22,7 @@ class ApplicationContext:
         self.config_service = ConfigService()
         self.dbfile = None
         self.setup_window = SetupWindow(self.config_service)
+        self.status_queue = SimpleQueue()
         self.event_dispatcher.register(
             'start-config-db', self.setup_window.processEvent)
         self.event_dispatcher.register('app-quit', lambda e: self.quit())
@@ -39,16 +41,17 @@ class ApplicationContext:
 
         dbfile = self.config_service.getDatabaseFilePath()
         if dbfile:
+            self.status_queue = SimpleQueue()
             self.conn_manager = SqliteConnectionManager()
             self.conn_manager.dbFile = str(dbfile)
             self.event_store = SqliteEventStore(self.conn_manager)
             self.data_store = SqliteDataStore(self.conn_manager)
-            self.rm_model_worker = ReadModelWorker(self.conn_manager)
+            self.rm_model_worker = ReadModelWorker(self.conn_manager, self.status_queue)
             self.event_store.add_listener(lambda evt: self.rm_model_worker.update())
             self.rm_model_worker.start()
             
             self.mainWindow = MainWindow(
-                self.event_dispatcher, self.event_store, self.data_store)
+                self.event_dispatcher, self.event_store, self.data_store, self.status_queue)
 
             self.mainWindow.show()
             self.qApp.exec()

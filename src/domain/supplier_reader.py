@@ -1,6 +1,6 @@
 
 from typing import List
-from domain.suppliers import Supplier
+from domain.event_factory import Supplier
 from services.event_store.eventstore import EventStore
 
 

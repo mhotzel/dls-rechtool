@@ -1,7 +1,7 @@
 
 from typing import Sequence
 
-from domain.suppliers import Supplier
+from domain.event_factory import Supplier
 
 
 class SupplierAlreadyExistsException(Exception):

@@ -5,6 +5,7 @@ from services.readmodels.base_data_store import DataStore
 from ui.edeka_orderconf_widget import EdekaOrderConfirmationImportWidget
 from ui.empty_widget import EmptyPane
 from ui.import_xinvoice_widget import ImportEInvoice
+from ui.issue_correction_widget import IssueCorrectionWidget
 from ui.manual_position_editor_widget import ManualPositionEditorWidget
 from ui.paxan_orderconf_widget import PaxanOrderConfirmationImportWidget
 from ui.product_list_export_widget import ProdListExportWidget
@@ -27,6 +28,7 @@ class MainPart(QStackedWidget):
         self.event_dispatcher.register(
             'import-paxan-orderconfirmation', self.process_event)
         self.event_dispatcher.register('export-prodlist', self.process_event)
+        self.event_dispatcher.register('correct-issue', self.process_event)
 
         self.event_mapping = {
             'import-invoice': self.invoiceWidget,
@@ -34,7 +36,8 @@ class MainPart(QStackedWidget):
             'import-edeka-orderconfirmation': self.edeka_orderconf_widget,
             'import-paxan-orderconfirmation': self.paxan_orderconf_widget,
             'import-manual-positions': self.manual_positions_widget,
-            'export-prodlist': self.export_prod_list_widget
+            'export-prodlist': self.export_prod_list_widget,
+            'correct-issue': self.issue_correction_widget
         }
 
     def _build_ui(self):
@@ -65,8 +68,12 @@ class MainPart(QStackedWidget):
         self.export_prod_list_widget = ProdListExportWidget(self, self.event_dispatcher, self.dataStore)
         self.addWidget(self.export_prod_list_widget)
 
+        self.issue_correction_widget = IssueCorrectionWidget(self, self.event_dispatcher, self.evtStore)
+        self.addWidget(self.issue_correction_widget)
+
         self.setCurrentWidget(self.emptyWidget)
 
     def process_event(self, event: AppEvent) -> None:
         """Verarbeitet ein Event"""
+        self.event_dispatcher.send(AppEvent(evt_type='status-message', evt_data=''))
         self.setCurrentWidget(self.event_mapping[event.evt_type])

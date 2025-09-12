@@ -24,3 +24,9 @@ class DataStore(Protocol):
     @abstractmethod
     def get_product_list(self) -> List[Product]:
         """Liefert die Liste der Artikel mit Einzelpreisen"""
+        ...
+
+    @abstractmethod
+    def get_doc_list(self):
+        """Liefert die Liste aller Dokumente"""
+        ...

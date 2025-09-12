@@ -1,15 +1,18 @@
 
+from enum import Enum
 from pydantic import BaseModel
 from datetime import datetime
 from datetime import timezone
 import uuid
 
-REGISTERED_EVENTS = {
-    'supplier.onboarded': "Es wurde ein neuer Lieferant hinzugefügt",
-    'invoice.imported': "Es wurde eine neue Rechnung eingelesen",
-    'orderconf.imported': "Es wurde eine neue Bestellbestätigung eingelesen",
-    'manual-doc.imported': "Es wurden manuell erfasste Positionen eingelesen"
-}
+
+class EvtTypes(Enum):
+    SUPPLIER_ONBOARDED = 'supplier.onboarded'
+    INVOICE_IMPORTED = 'invoice.imported'
+    ORDERCONF_IMPORTED = 'orderconf.imported'
+    GENERIC_INVOICE_IMPORTED = 'generic-invoice.imported'
+    GENERIC_ORDER_IMPORTED = 'generic-order.imported'
+
 
 class Event(BaseModel):
     id: uuid.UUID | None = None
@@ -24,9 +27,9 @@ class Event(BaseModel):
     data: str | None = None
 
     @classmethod
-    def createEvent(cls, id: uuid.uuid1, subject: str, type: str, data: str):
-        if type not in REGISTERED_EVENTS.keys():
-            raise LookupError(f"event type 'type' is unknown")
+    def createEvent(cls, id: uuid.uuid1, subject: str, type: str, data: str) -> "Event":
+        if type not in EvtTypes:
+            raise LookupError(f"event type '{type}' is unknown")
 
         evt = cls(id=id, type=type, subject=subject,
                   time=datetime.now(timezone.utc), data=data)

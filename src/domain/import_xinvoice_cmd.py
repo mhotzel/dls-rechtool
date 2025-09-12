@@ -3,6 +3,7 @@ from typing import Sequence
 import uuid
 
 from domain.already_imported_exception import AlreadyImportedException
+from domain.event_factory import invoice_imported_event
 from domain.fakturx_invoice import FakturXInvoice
 from domain.xinvoice import InvoiceItem, Invoice
 from services.event_store.event import Event
@@ -56,10 +57,6 @@ class ImportXInvoiceCmd:
             )
             invoice_result.positions.append(inv_item)
 
-        evt = Event.createEvent(
-            id=uuid.uuid1(),
-            subject=self.subject,
-            type='invoice.imported',
-            data=invoice_result.model_dump_json()
-        )
+        evt = invoice_imported_event(self.supplier_id, invoice_result)
         return evt
+

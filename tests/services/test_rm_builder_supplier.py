@@ -1,6 +1,7 @@
 
 import json
 from pathlib import Path
+from queue import SimpleQueue
 import uuid
 from services.event_store.event import Event
 from services.event_store.sqlite_eventstore import SqliteEventStore
@@ -17,7 +18,8 @@ def test_initial_setup():
 
     conn_mgr = SqliteConnectionManager()
     conn_mgr.dbFile = str(db_file)
-    rmw = RmSupplierBuilder(conn_mgr=conn_mgr)
+    status_queue = SimpleQueue()
+    rmw = RmSupplierBuilder(conn_mgr=conn_mgr, status_queue=status_queue)
     rmw._initial_setup()
 
     conn = conn_mgr.get_connection()
@@ -48,6 +50,7 @@ def test_runonce_suppliers_from_0():
     db_file = Path('testdb.sqlite')
     ab_path = db_file.absolute()
     db_file.unlink(missing_ok=True)
+    status_queue = SimpleQueue()
 
     conn_mgr = SqliteConnectionManager()
     conn_mgr.dbFile = str(db_file)
@@ -65,7 +68,7 @@ def test_runonce_suppliers_from_0():
         )
         evt_store.add_event(evt=evt, expected_version=-1)
 
-    rmw = RmSupplierBuilder(conn_mgr=conn_mgr)
+    rmw = RmSupplierBuilder(conn_mgr=conn_mgr, status_queue=status_queue)
     rmw._initial_setup()
     rmw.run()
 
@@ -116,7 +119,8 @@ def test_runonce_suppliers_from_3():
         )
         evt_store.add_event(evt=evt, expected_version=-1)
 
-    rmw = RmSupplierBuilder(conn_mgr)
+    status_queue = SimpleQueue()
+    rmw = RmSupplierBuilder(conn_mgr, status_queue)
     rmw._initial_setup()
     rmw.run()
 

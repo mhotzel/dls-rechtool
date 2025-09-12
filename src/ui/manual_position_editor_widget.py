@@ -11,9 +11,8 @@ from PySide6.QtCore import Qt, QDate, QAbstractTableModel, QModelIndex, QLocale,
 
 from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
-from domain.manual_input_cmd import ManualDocument, ManualDocumentPosition, manualPositionsImportedEvent
 from domain.supplier_reader import SupplierReader
-from domain.suppliers import Supplier
+from domain.event_factory import GenericInvoice, GenericInvoicePosition, GenericOrder, GenericOrderPosition, Supplier, generic_invoice_imported_event, generic_order_imported_event
 from services.event_store.eventstore import EventStore
 
 import locale
@@ -361,27 +360,46 @@ class ManualPositionEditorWidget(QGroupBox):
     def save_doc(self):
         """speichert das Dokument"""
 
-        doc = ManualDocument(
-            suppl_id=self.header_widget.cmbSupplier.currentData(),
-            suppl_name=self.header_widget.cmbSupplier.currentText(),
-            doc_type=self.header_widget.cmb_doctype.currentData(),
-            doc_id=self.header_widget.txtFldDocId.text(),
-            doc_date=self.header_widget.txtFldDocDate.date().toPython()
-        )
-
-        # idx, art_nr, gtin, name, price
-        for idx, pos in enumerate(self.positions_widget.position_table_model.positions(), start=1):
-            man_pos = ManualDocumentPosition(
-                idx=idx,
-                line_id=str(pos[0]),
-                sellerAssignedId=pos[1],
-                globalId=pos[2],
-                name=pos[3],
-                price=pos[4]
+        if self.header_widget.cmb_doctype.currentData() == 'invoice':
+            doc = GenericInvoice(
+                suppl_id=self.header_widget.cmbSupplier.currentData(),
+                suppl_name=self.header_widget.cmbSupplier.currentText(),
+                invoice_id=self.header_widget.txtFldDocId.text(),
+                invoice_date=self.header_widget.txtFldDocDate.date().toPython()
             )
-            doc.positions.append(man_pos)
+            # idx, art_nr, gtin, name, price
+            for idx, pos in enumerate(self.positions_widget.position_table_model.positions(), start=1):
+                man_pos = GenericInvoicePosition(
+                    idx=idx,
+                    line_id=str(pos[0]),
+                    sellerAssignedId=pos[1],
+                    globalId=pos[2],
+                    name=pos[3],
+                    price=pos[4]
+                )
+                doc.positions.append(man_pos)
+            evt = generic_invoice_imported_event(doc)
 
-        evt = manualPositionsImportedEvent(doc)
+        elif self.header_widget.cmb_doctype.currentData() == 'order':
+            doc = GenericOrder(
+                suppl_id=self.header_widget.cmbSupplier.currentData(),
+                suppl_name=self.header_widget.cmbSupplier.currentText(),
+                order_id=self.header_widget.txtFldDocId.text(),
+                order_date=self.header_widget.txtFldDocDate.date().toPython()
+            )
+            # idx, art_nr, gtin, name, price
+            for idx, pos in enumerate(self.positions_widget.position_table_model.positions(), start=1):
+                man_pos = GenericOrderPosition(
+                    idx=idx,
+                    line_id=str(pos[0]),
+                    sellerAssignedId=pos[1],
+                    globalId=pos[2],
+                    name=pos[3],
+                    price=pos[4]
+                )
+                doc.positions.append(man_pos)
+            evt = generic_order_imported_event(doc)
+            
         try:
             self.evt_store.add_event(evt=evt, expected_version=-1)
             self.evt_dispatcher.send(

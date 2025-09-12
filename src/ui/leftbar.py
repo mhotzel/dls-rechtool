@@ -51,6 +51,11 @@ class LeftBar(QFrame):
                 )
             )
         )
+        self.btn_correct_issue = QPushButton("Korrektur eingelesener Dokumente")
+        self.btn_correct_issue.clicked.connect(
+            lambda evt: self.event_dispatcher.send(AppEvent(evt_type='correct-issue'))
+        )
+
         self.btn_map_gtin = QPushButton("GTIN/EAN nachpflegen")
         self.btn_map_gtin.setEnabled(False)
         self.btn_map_gtin.setToolTip('Noch nicht eingebaut')
@@ -71,6 +76,7 @@ class LeftBar(QFrame):
         self.innerFrame.layout().addWidget(self.btn_paxan_orderconfirm)
         self.innerFrame.layout().addWidget(self.btn_edeka_orderconfirm)
         self.innerFrame.layout().addWidget(self.btn_article_input)
+        self.innerFrame.layout().addWidget(self.btn_correct_issue)
         self.innerFrame.layout().addWidget(self.btn_map_gtin)
         self.innerFrame.layout().addWidget(self.btn_export_articles)
         self.innerFrame.layout().addWidget(self.btn_price_viewer)

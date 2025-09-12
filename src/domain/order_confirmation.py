@@ -4,7 +4,7 @@ from typing import List
 from pydantic import BaseModel
 
 
-class OrderItem(BaseModel):
+class OrderConfItem(BaseModel):
     idx: int
     seller_assigned_id: str
     global_id: str | None = None
@@ -18,6 +18,6 @@ class OrderItem(BaseModel):
 class OrderConfirmation(BaseModel):
     suppl_id: str
     suppl_name: str
-    order_confirm: str
+    order_confirm_id: str
     order_date: date
-    positions: List[OrderItem] | None = []
+    positions: List[OrderConfItem] | None = []

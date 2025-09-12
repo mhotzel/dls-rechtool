@@ -3,13 +3,15 @@ from importlib.resources import files, as_file
 from os import path
 import os
 from pathlib import Path
+from queue import Empty, SimpleQueue
 from application.app_event import AppEvent
 from services.event_store.eventstore import EventStore
 from services.readmodels.base_data_store import DataStore
+from services.thread_worker import Status
 from ui.leftbar import LeftBar
 from ui.mainpart import MainPart
 
-from PySide6.QtCore import QSize
+from PySide6.QtCore import QSize, QTimer
 from PySide6.QtGui import QAction, QKeySequence, QScreen, QIcon
 from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QSizePolicy, QWidget, QGridLayout
 
@@ -18,16 +20,29 @@ from ui.status_msg_widget import StatusMessageWidget
 
 class MainWindow(QMainWindow):
 
-    def __init__(self, eventDispatcher: EventDispatcher, evtStore: EventStore, dataStore: DataStore):
+    def __init__(self, eventDispatcher: EventDispatcher, evtStore: EventStore, dataStore: DataStore, status_queue: SimpleQueue):
         super().__init__()
         self.evtStore = evtStore
         self.setWindowTitle("DLS - Rechnungs- und Lieferantendatenerfassung")
         self.event_dispatcher: EventDispatcher = eventDispatcher
         self.evtStore: EventStore = evtStore
         self.dataStore = dataStore
+        self.status_queue = status_queue
         self._buildGui()
         self._addMenus()
         self.setWindowIcon(self._createIcons())
+        self.timer = QTimer(self, interval=2000)
+        self.timer.timeout.connect(self.update_status)
+        self.timer.start()
+
+    def update_status(self):
+        """Updated die Status-Message"""
+        try:
+            msg: Status = self.status_queue.get(block=False)
+            self.event_dispatcher.send(AppEvent(evt_type='status-message', evt_data=msg.payload))
+        except Empty:
+            pass
+
 
     def _createIcons(self):
         my_icon = QIcon()

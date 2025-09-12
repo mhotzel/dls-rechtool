@@ -2,9 +2,11 @@
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+from queue import SimpleQueue
 from sqlite3 import Cursor
 from typing import Mapping
 import uuid
+from domain.event_factory import GenericInvoice, GenericOrder, generic_invoice_imported_event, generic_order_imported_event
 from services.event_store.event import Event
 from services.event_store.sqlite_eventstore import SqliteEventStore
 from services.rm_builder.rm_builder_prod_prices import RmProductListBuilder
@@ -16,7 +18,7 @@ data_order_confirm_edeka1 = """
 {
     "suppl_id": "1",
     "suppl_name": "EDEKA",
-    "order_confirm": "E6642262241230090822",
+    "order_confirm_id": "E6642262241230090822",
     "order_date": "2025-01-07",
     "positions": [
         {
@@ -49,7 +51,7 @@ data_order_confirm_edeka2 = """
 {
     "suppl_id": "1",
     "suppl_name": "EDEKA",
-    "order_confirm": "E6642262250812085651",
+    "order_confirm_id": "E6642262250812085651",
     "order_date": "2025-08-14",
     "positions": [
         {
@@ -264,9 +266,8 @@ data_manu_invoice_utz = """
     {
         "suppl_id":"2",
         "suppl_name":"Utz",
-        "doc_type":"invoice",
-        "doc_id":"rechnungutz4711",
-        "doc_date":"2025-09-01",
+        "invoice_id":"rechnungutz4711",
+        "invoice_date":"2025-09-01",
         "positions":[
             {
                 "idx":1,
@@ -288,13 +289,12 @@ data_manu_invoice_utz = """
     }
 """
 
-data_manu_invoice_utz2 = """
+data_manu_order_utz2 = """
     {
         "suppl_id":"2",
         "suppl_name":"Utz",
-        "doc_type":"order",
-        "doc_id":"bestellung-utz-4712",
-        "doc_date":"2025-09-02",
+        "order_id":"bestellung-utz-4712",
+        "order_date":"2025-09-02",
         "positions":[
             {
                 "idx":1,
@@ -330,10 +330,11 @@ def test_initial_setup():
     db_file = Path('testdb.sqlite')
     ab_path = db_file.absolute()
     db_file.unlink(missing_ok=True)
+    status_queue = SimpleQueue()
 
     conn_mgr = SqliteConnectionManager()
     conn_mgr.dbFile = str(db_file)
-    rmw = RmProductListBuilder(conn_mgr=conn_mgr)
+    rmw = RmProductListBuilder(conn_mgr=conn_mgr, status_queue=status_queue)
     rmw._initial_setup()
 
     conn = conn_mgr.get_connection()
@@ -355,6 +356,7 @@ def test_rm_invoices_weber():
     db_file = Path('testdb.sqlite')
     ab_path = db_file.absolute()
     db_file.unlink(missing_ok=True)
+    status_queue = SimpleQueue()
 
     conn_mgr = SqliteConnectionManager()
     conn_mgr.dbFile = str(db_file)
@@ -371,7 +373,7 @@ def test_rm_invoices_weber():
 
     evt_store.add_event(evt=evt, expected_version=-1)
 
-    rmw = RmProductListBuilder(conn_mgr=conn_mgr)
+    rmw = RmProductListBuilder(conn_mgr=conn_mgr, status_queue=status_queue)
     rmw._initial_setup()
 
     conn = conn_mgr.get_connection()
@@ -402,6 +404,7 @@ def test_rm_invoices_weber_edeka():
     db_file = Path('testdb.sqlite')
     ab_path = db_file.absolute()
     db_file.unlink(missing_ok=True)
+    status_queue = SimpleQueue()
 
     conn_mgr = SqliteConnectionManager()
     conn_mgr.dbFile = str(db_file)
@@ -418,7 +421,7 @@ def test_rm_invoices_weber_edeka():
 
     evt_store.add_event(evt=evt, expected_version=-1)
 
-    rmw = RmProductListBuilder(conn_mgr=conn_mgr)
+    rmw = RmProductListBuilder(conn_mgr=conn_mgr, status_queue=status_queue)
     rmw._initial_setup()
 
     conn = conn_mgr.get_connection()
@@ -468,6 +471,7 @@ def test_rm_orderconf_edeka():
     db_file = Path('testdb.sqlite')
     ab_path = db_file.absolute()
     db_file.unlink(missing_ok=True)
+    status_queue = SimpleQueue()
 
     conn_mgr = SqliteConnectionManager()
     conn_mgr.dbFile = str(db_file)
@@ -484,7 +488,7 @@ def test_rm_orderconf_edeka():
 
     evt_store.add_event(evt=evt, expected_version=-1)
 
-    rmw = RmProductListBuilder(conn_mgr=conn_mgr)
+    rmw = RmProductListBuilder(conn_mgr=conn_mgr, status_queue=status_queue)
     rmw._initial_setup()
 
     conn = conn_mgr.get_connection()
@@ -535,6 +539,7 @@ def test_rm_manualinvoice_utz():
     db_file = Path('testdb.sqlite')
     ab_path = db_file.absolute()
     db_file.unlink(missing_ok=True)
+    status_queue = SimpleQueue()
 
     conn_mgr = SqliteConnectionManager()
     conn_mgr.dbFile = str(db_file)
@@ -542,16 +547,13 @@ def test_rm_manualinvoice_utz():
     conn_mgr.close_connection()
     evt_store = SqliteEventStore(conn_mgr)
 
-    evt = Event.createEvent(
-        id=uuid.uuid1(),
-        subject=f"docid-2-rechnungutz4711",
-        type='manual-doc.imported',
-        data=data_manu_invoice_utz
+    evt = generic_invoice_imported_event(
+        GenericInvoice.model_validate_json(data_manu_invoice_utz)
     )
 
     evt_store.add_event(evt=evt, expected_version=-1)
 
-    rmw = RmProductListBuilder(conn_mgr=conn_mgr)
+    rmw = RmProductListBuilder(conn_mgr=conn_mgr, status_queue=status_queue)
     rmw._initial_setup()
 
     conn = conn_mgr.get_connection()
@@ -575,11 +577,8 @@ def test_rm_manualinvoice_utz():
 
     conn_mgr.close_connection()
 
-    evt = Event.createEvent(
-        id=uuid.uuid1(),
-        subject=f"docid-2-bestellung-utz4712",
-        type='manual-doc.imported',
-        data=data_manu_invoice_utz2
+    evt = generic_order_imported_event(
+        GenericOrder.model_validate_json(data_manu_order_utz2)
     )
 
     evt_store.add_event(evt=evt, expected_version=-1)
