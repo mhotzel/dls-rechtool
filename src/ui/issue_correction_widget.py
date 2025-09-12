@@ -129,7 +129,7 @@ class IssueCorrectionWidget(QGroupBox):
 
         layout.addWidget(self.head_widget)
         layout.addWidget(self.hitlist_widget)
-        layout.addWidget(self.positions_widget)
+        # layout.addWidget(self.positions_widget)
 
         # layout.addStretch(1)
 
