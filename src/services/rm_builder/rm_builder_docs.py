@@ -136,7 +136,7 @@ def on_generic_order_imported(data: Mapping, cur: Cursor) -> List[Exception]:
             data['suppl_id'],
             data['suppl_name'],
             data['order_id'],
-            'invoice',
+            'order',
             data['order_date'],
             None,
             now.isoformat(),
