@@ -13,7 +13,7 @@ class InvoiceItemReader:
     def read_all(self, subject: str) -> List[InvoiceItem]:
         """Liest alle Lieferanten"""
 
-        events = self.evt_store.readSubject()
+        events = self.evt_store.readEventsBySubject()
 
         result: List[InvoiceItem] = []
         for e in events:

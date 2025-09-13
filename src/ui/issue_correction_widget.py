@@ -125,7 +125,7 @@ class IssueCorrectionWidget(QGroupBox):
 
         self.head_widget = self._get_head()
         self.hitlist_widget = self._get_hitlist_widget()
-        self.positions_widget = self._get_positions_widget()
+        #self.positions_widget = self._get_positions_widget()
 
         layout.addWidget(self.head_widget)
         layout.addWidget(self.hitlist_widget)

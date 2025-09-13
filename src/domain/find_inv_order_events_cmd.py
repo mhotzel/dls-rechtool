@@ -37,7 +37,6 @@ class FindInvoiceAndOrderEventsCmd:
         """Liefert die gefundenen Events als Liste zurück"""
 
         docs = self.data_store.get_doc_list()
-        doc: Document = docs[0]
         docs = [doc for doc in docs if doc.doc_date >= self.date_from and doc.doc_date <= self.date_to]
         docs = [doc for doc in docs if self.suppl_id == '' or doc.suppl_id == self.suppl_id]
         docs = [doc for doc in docs if self.doc_type == '' or doc.doc_type == self.doc_type]

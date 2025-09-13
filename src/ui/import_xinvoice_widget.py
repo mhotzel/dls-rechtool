@@ -147,7 +147,7 @@ class ImportEInvoice(QGroupBox):
         subject = f"invoice-{supplier_id}-{self.txtFldInvoiceNr.text()}"
 
         try:
-            events = self.evtStore.readSubject(subject=subject, limit=1)
+            events = self.evtStore.readEventsBySubject(subject=subject, limit=1)
             event_to_save = ImportXInvoiceCmd(
                 events=events, invoice=self.invoice_doc.invoice, supplier_id=supplier_id)()
 
