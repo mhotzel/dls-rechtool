@@ -1,7 +1,7 @@
-from typing import List, MutableMapping, Tuple
+from typing import List, MutableMapping, Tuple, Union
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton,
-    QGroupBox, QFrame, QLineEdit, QHBoxLayout, 
+    QGroupBox, QFrame, QLineEdit, QHBoxLayout, QFileDialog,
     QGridLayout, QLabel, QComboBox, QDateEdit, QHeaderView, QTableView, QMenu
 )
 
@@ -11,9 +11,10 @@ from PySide6.QtCore import Qt, QDate, QAbstractTableModel, QModelIndex, QLocale,
 
 from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
+from domain.load_generic_doc_cmd import LoadGenericDocumentCmd
 from domain.manual_doc_import_cmd import ManualDocImportCmd
 from domain.supplier_reader import SupplierReader
-from domain.event_factory import GenericInvoice, GenericInvoicePosition, GenericOrder, GenericOrderPosition, Supplier, generic_invoice_imported_event, generic_order_imported_event
+from domain.event_factory import GenericDocument, GenericInvoice, GenericInvoicePosition, GenericOrder, GenericOrderPosition, Supplier, generic_invoice_imported_event, generic_order_imported_event
 from services.event_store.eventstore import EventStore
 
 import locale
@@ -86,10 +87,11 @@ class PositionTableModel(QAbstractTableModel):
 
 
 class PositionEditorWidget(QGroupBox):
-    def __init__(self, parent: QWidget, evtDispatcher: EventDispatcher, evtStore: EventStore):
+    def __init__(self, parent: QWidget, evtDispatcher: EventDispatcher, evtStore: EventStore, dataStore: DataStore):
         super().__init__(title='Positionen', parent=parent)
         self.event_dispatcher = evtDispatcher
         self.evt_store = evtStore
+        self.data_store = dataStore
         self.__build_ui()
 
     def __build_ui(self):
@@ -245,16 +247,17 @@ class PositionEditorWidget(QGroupBox):
 class HeaderWidget(QFrame):
     """Der Kopf mit den generellen Daten zur Erfassung"""
 
-    def __init__(self, parent: QWidget, evtDispatcher: EventDispatcher, evtStore: EventStore):
+    def __init__(self, parent: QWidget, evtDispatcher: EventDispatcher, evtStore: EventStore, dataStore: DataStore):
         super().__init__(parent=parent)
         self.evtStore = evtStore
+        self.dataStore = dataStore
         self.event_dispatcher = evtDispatcher
         self.supplierReader = SupplierReader(self.evtStore)
         self.__build_ui()
         self.__register_events()
 
     def __register_events(self):
-        self.cmbSupplier.currentIndexChanged.connect(
+        self.cmb_supplier.currentIndexChanged.connect(
             lambda e: self.check_header_infos_changed())
 
         self.cmb_doctype.currentIndexChanged.connect(
@@ -274,11 +277,17 @@ class HeaderWidget(QFrame):
         __headLayout = QGridLayout(self)
         self.setLayout(__headLayout)
         self.lblSelectSupplier = QLabel('Lieferant zuordnen', self)
-        self.cmbSupplier = QComboBox(self, editable=False)
-        self.cmbSupplier.addItem('<keiner>', None)
+        self.cmb_supplier = QComboBox(self, editable=False)
+        self.cmb_supplier.addItem('<keiner>', None)
 
         __headLayout.addWidget(self.lblSelectSupplier, 0, 0)
-        __headLayout.addWidget(self.cmbSupplier, 0, 1, 1, 2)
+        __headLayout.addWidget(self.cmb_supplier, 0, 1, 1, 2)
+
+        self.btn_load_document = QPushButton('Positionsdatei laden', self)
+        self.btn_load_document.clicked.connect(
+            lambda evt: self.load_document())
+
+        __headLayout.addWidget(self.btn_load_document, 0, 4)
 
         self.lblDocType = QLabel('Dokumenttyp', self)
         self.lblDocId = QLabel('Dokument-ID', self)
@@ -317,7 +326,7 @@ class HeaderWidget(QFrame):
         """Prüft, ob bei Veränderungen der Header-Eingabefelder die MUSS-Werte gesetzt wurden"""
         doc_id = self.txtFldDocId.text()
         doc_date = self.txtFldDocDate.text()
-        suppl_id = self.cmbSupplier.currentData()
+        suppl_id = self.cmb_supplier.currentData()
         doc_type = self.cmb_doctype.currentData()
 
         if len(doc_id) > 0 and \
@@ -330,11 +339,39 @@ class HeaderWidget(QFrame):
 
     def showEvent(self, event):
         suppliers: List[Supplier] = self.supplierReader.read_all()
-        self.cmbSupplier.clear()
-        self.cmbSupplier.addItem('')
+        self.cmb_supplier.clear()
+        self.cmb_supplier.addItem('')
         for s in suppliers:
-            self.cmbSupplier.addItem(s.suppl_name, userData=s.suppl_id)
+            self.cmb_supplier.addItem(s.suppl_name, userData=s.suppl_id)
         return super().showEvent(event)
+
+    def load_document(self):
+        """Laedt eine Exceldatei mit Positionen"""
+        generic_doc: GenericDocument = None
+
+        filename, _ = QFileDialog.getOpenFileName(
+            self, caption='Datei auswählen', filter="Erfassungsdatei (*.xlsx)")
+        cmd = LoadGenericDocumentCmd(self.dataStore, filename)
+
+        try:
+            generic_doc = cmd.load()
+            self.cmb_doctype.setCurrentText(generic_doc.doctype)
+            self.cmb_supplier.setCurrentText(generic_doc.suppl_name)
+            self.txtFldDocId.setText(generic_doc.doc_id)
+            self.txtFldDocDate.setDate(generic_doc.doc_date)
+
+            parent: ManualPositionEditorWidget = self.parent()
+            table_widget: PositionEditorWidget = parent.positions_widget
+            model: PositionTableModel = table_widget.position_table_model
+            model.removeAll()
+
+            for pos in generic_doc.positions:
+                model.addPosition(idx=pos.line_id, art_nr=pos.sellerAssignedId,
+                                  gtin=pos.globalId, name=pos.name, price=pos.price)
+
+        except Exception as e:
+            self.event_dispatcher.send(AppEvent(
+                evt_lvl=LogLevel.CRITICAL, evt_type='status-message', evt_data=f"Fehler beim Laden der Datei: '{e}'"))
 
 
 class ManualPositionEditorWidget(QGroupBox):
@@ -352,11 +389,11 @@ class ManualPositionEditorWidget(QGroupBox):
         self.setLayout(layout)
 
         self.header_widget = HeaderWidget(
-            self, self.evt_dispatcher, self.evt_store)
+            self, self.evt_dispatcher, self.evt_store, self.data_store)
         layout.addWidget(self.header_widget)
 
         self.positions_widget = PositionEditorWidget(
-            self, self.evt_dispatcher, self.evt_store)
+            self, self.evt_dispatcher, self.evt_store, self.data_store)
         layout.addWidget(self.positions_widget)
 
         layout.addStretch(1)
@@ -366,8 +403,8 @@ class ManualPositionEditorWidget(QGroupBox):
 
         if self.header_widget.cmb_doctype.currentData() == 'invoice':
             doc = GenericInvoice(
-                suppl_id=self.header_widget.cmbSupplier.currentData(),
-                suppl_name=self.header_widget.cmbSupplier.currentText(),
+                suppl_id=self.header_widget.cmb_supplier.currentData(),
+                suppl_name=self.header_widget.cmb_supplier.currentText(),
                 invoice_id=self.header_widget.txtFldDocId.text(),
                 invoice_date=self.header_widget.txtFldDocDate.date().toPython()
             )
@@ -386,8 +423,8 @@ class ManualPositionEditorWidget(QGroupBox):
 
         elif self.header_widget.cmb_doctype.currentData() == 'order':
             doc = GenericOrder(
-                suppl_id=self.header_widget.cmbSupplier.currentData(),
-                suppl_name=self.header_widget.cmbSupplier.currentText(),
+                suppl_id=self.header_widget.cmb_supplier.currentData(),
+                suppl_name=self.header_widget.cmb_supplier.currentText(),
                 order_id=self.header_widget.txtFldDocId.text(),
                 order_date=self.header_widget.txtFldDocDate.date().toPython()
             )
@@ -402,9 +439,9 @@ class ManualPositionEditorWidget(QGroupBox):
                     price=pos[4]
                 )
                 doc.positions.append(man_pos)
-            
+
             cmd = ManualDocImportCmd(self.data_store, self.evt_store)
-            
+
         try:
             evt = cmd.saveDocument(doc)
             self.evt_dispatcher.send(
@@ -425,7 +462,7 @@ class ManualPositionEditorWidget(QGroupBox):
     def clean_input(self):
         "Leert die Eingabefelder wieder"
         self.header_widget.cmb_doctype.setCurrentIndex(0)
-        self.header_widget.cmbSupplier.setCurrentIndex(0)
+        self.header_widget.cmb_supplier.setCurrentIndex(0)
         self.header_widget.txtFldDocId.setText('')
         self.header_widget.txtFldDocDate.setDate(QDate.currentDate())
         self.positions_widget.position_table_model.removeAll()
@@ -435,4 +472,3 @@ class ManualPositionEditorWidget(QGroupBox):
         self.positions_widget.txtSellerAssignedId.setText('')
         self.positions_widget.txtPrice.setText('')
         self.positions_widget.txtLfdNr.setFocus()
-

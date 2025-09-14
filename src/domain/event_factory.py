@@ -6,14 +6,32 @@ from urllib.parse import quote
 from typing import List
 import uuid
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from domain.order_confirmation import OrderConfirmation
 from domain.xinvoice import Invoice
 from services.event_store.event import Event, EvtTypes
 
 
-class GenericInvoicePosition(BaseModel):
+class GenericDocPosition(BaseModel):
     """Eine Position"""
+    idx: int
+    line_id: str
+    sellerAssignedId: str
+    globalId: str | None = None
+    name: str
+    price: float
+
+class GenericDocument(BaseModel):
+    """Ein generisches Dokument, welches die manuelle Erfassung von Artikelpreisen ermöglicht"""
+    doctype: str
+    suppl_id: str
+    suppl_name: str
+    doc_id: str
+    doc_date: date
+    positions: List[GenericDocPosition] | None = []
+
+class GenericInvoicePosition(GenericDocPosition):
+    """Eine Position einer Rechnung"""
     idx: int
     line_id: str
     sellerAssignedId: str
@@ -31,14 +49,8 @@ class GenericInvoice(BaseModel):
     positions: List[GenericInvoicePosition] = []
 
 
-class GenericOrderPosition(BaseModel):
-    """Eine Position"""
-    idx: int
-    line_id: str
-    sellerAssignedId: str
-    globalId: str | None = None
-    name: str
-    price: float
+class GenericOrderPosition(GenericDocPosition):
+    """Eine Position einer Bestellung"""
 
 
 class GenericOrder(BaseModel):
@@ -54,7 +66,7 @@ class Supplier(BaseModel):
     """Ein Lieferant"""
     suppl_id: str
     suppl_name: str
-    seller_id: str | None
+    seller_id: str | None = None
 
     def __str__(self):
         if self.seller_id:
@@ -134,6 +146,7 @@ def generic_order_imported_event(doc: GenericOrder) -> Event:
     )
     return evt
 
+
 def document_voided_event(subject: str) -> Event:
 
     subject = build_stream_id(subject)
@@ -144,6 +157,7 @@ def document_voided_event(subject: str) -> Event:
         data=json.dumps(dict(), ensure_ascii=False)
     )
     return evt
+
 
 def document_unvoided_event(subject: str) -> Event:
 

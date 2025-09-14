@@ -1,7 +1,7 @@
 
 from typing import Any, List, Mapping
 from domain.find_inv_order_events_cmd import Document
-from services.readmodels.base_data_store import DataStore, Product
+from services.readmodels.base_data_store import DataStore, Product, Supplier
 from services.sqlite_conn_manager import SqliteConnectionManager
 
 def _product_from_dict(db_row: Mapping[str, Any]) -> Product:
@@ -16,6 +16,9 @@ def _product_from_dict(db_row: Mapping[str, Any]) -> Product:
         name=db_row['name'],
         price=db_row['price']
     )
+
+def _supplier_from_dict(db_row: Mapping[str, Any]) -> Document:
+    return Supplier.model_validate(db_row)
 
 def _doc_from_dict(db_row: Mapping[str, Any]) -> Document:
     return Document.model_validate(db_row)
@@ -57,6 +60,22 @@ class SqliteDataStore(DataStore):
         with conn:
             data = conn.execute(sql).fetchall()       
             doclist: List[Document] = [_doc_from_dict(row) for row in data]
+
+        self.conn_manager.close_connection()
+
+        return doclist
+
+    def get_suppliers_list(self) -> List[Supplier]:
+        """Liefert die Liste aller Lieferanten"""
+        
+        sql = """
+        SELECT suppl_id, suppl_name, updated_ts FROM rm_suppliers_t
+        """
+
+        conn = self.conn_manager.get_connection()
+        with conn:
+            data = conn.execute(sql).fetchall()       
+            doclist: List[Supplier] = [_supplier_from_dict(row) for row in data]
 
         self.conn_manager.close_connection()
 

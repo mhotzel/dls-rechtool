@@ -51,6 +51,7 @@ class LeftBar(QFrame):
                 )
             )
         )
+
         self.btn_correct_issue = QPushButton("Korrektur eingelesener Dokumente")
         self.btn_correct_issue.clicked.connect(
             lambda evt: self.event_dispatcher.send(AppEvent(evt_type='correct-issue'))
