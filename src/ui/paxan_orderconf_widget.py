@@ -12,14 +12,16 @@ from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
 from domain.paxan_order_confirm_import_cmd import PaxanOrderConfirmationImportCmd
 from services.event_store.eventstore import EventStore
+from services.readmodels.base_data_store import DataStore
 
 
 class PaxanOrderConfirmationImportWidget(QGroupBox):
 
-    def __init__(self, parent: QWidget, event_dispatcher: EventDispatcher, evtStore: EventStore):
+    def __init__(self, parent: QWidget, event_dispatcher: EventDispatcher, evtStore: EventStore, dataStore: DataStore):
         super().__init__('Paxan-Bestellbestätigungen importieren', parent)
         locale.setlocale(locale.LC_ALL, '')
         self.evtStore = evtStore
+        self.dataStore = dataStore
         self.suppl_id = '35'
         self.suppl_name = 'Paxan'
         self.evt_dispatcher = event_dispatcher
@@ -79,7 +81,12 @@ class PaxanOrderConfirmationImportWidget(QGroupBox):
                 suppl_name=self.suppl_name
             ).createEvent()
 
-            self.evtStore.add_event(evt, expected_version=-1)
+            docs = self.dataStore.get_doc_list()
+            for doc in docs:
+                if doc.subject == evt.subject:
+                    raise ValueError(f"Das Dokument '{evt.subject}' wurde bereits eingelesen")
+
+            self.evtStore.add_event(evt, expected_version=None)
             self.evt_dispatcher.send(
                 AppEvent(
                     evt_lvl=LogLevel.INFO,

@@ -11,11 +11,14 @@ from PySide6.QtCore import Qt, QDate, QAbstractTableModel, QModelIndex, QLocale,
 
 from application.app_event import AppEvent, LogLevel
 from application.event_dispatcher import EventDispatcher
+from domain.manual_doc_import_cmd import ManualDocImportCmd
 from domain.supplier_reader import SupplierReader
 from domain.event_factory import GenericInvoice, GenericInvoicePosition, GenericOrder, GenericOrderPosition, Supplier, generic_invoice_imported_event, generic_order_imported_event
 from services.event_store.eventstore import EventStore
 
 import locale
+
+from services.readmodels.base_data_store import DataStore
 
 
 class PositionTableModel(QAbstractTableModel):
@@ -337,10 +340,11 @@ class HeaderWidget(QFrame):
 class ManualPositionEditorWidget(QGroupBox):
     """Dient der manuellen Erfassung von Positionen"""
 
-    def __init__(self, parent: QWidget, evt_dispatcher: EventDispatcher, evt_store: EventStore):
+    def __init__(self, parent: QWidget, evt_dispatcher: EventDispatcher, evt_store: EventStore, data_store: DataStore):
         super().__init__('Manuelle Positionserfassung', parent=parent)
         self.evt_dispatcher = evt_dispatcher
         self.evt_store = evt_store
+        self.data_store = data_store
         self.__build_ui()
 
     def __build_ui(self):
@@ -378,7 +382,7 @@ class ManualPositionEditorWidget(QGroupBox):
                     price=pos[4]
                 )
                 doc.positions.append(man_pos)
-            evt = generic_invoice_imported_event(doc)
+            cmd = ManualDocImportCmd(self.data_store, self.evt_store)
 
         elif self.header_widget.cmb_doctype.currentData() == 'order':
             doc = GenericOrder(
@@ -398,10 +402,11 @@ class ManualPositionEditorWidget(QGroupBox):
                     price=pos[4]
                 )
                 doc.positions.append(man_pos)
-            evt = generic_order_imported_event(doc)
+            
+            cmd = ManualDocImportCmd(self.data_store, self.evt_store)
             
         try:
-            self.evt_store.add_event(evt=evt, expected_version=-1)
+            evt = cmd.saveDocument(doc)
             self.evt_dispatcher.send(
                 AppEvent(
                     evt_lvl=LogLevel.INFO,

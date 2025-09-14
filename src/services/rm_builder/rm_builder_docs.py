@@ -153,7 +153,7 @@ def on_generic_order_imported(data: Mapping, cur: Cursor) -> List[Exception]:
 
 def on_document_voided(data: Mapping, cur: Cursor) -> List[Exception]:
     sql = """
-    UPDATE rm_documents_t SET doc_state='VOIDED', updated_ts=? WHERE subject=?
+    DELETE FROM rm_documents_t WHERE subject=?
     """
 
     now = datetime.now(tz=timezone.utc)
@@ -161,29 +161,7 @@ def on_document_voided(data: Mapping, cur: Cursor) -> List[Exception]:
     errors: List[Exception] = []
 
     try:
-        cur.execute(sql, (
-            now.isoformat(),
-            data['subject'],
-        ))
-    except Exception as e:
-        errors.append(e)
-
-    return errors
-
-def on_document_unvoided(data: Mapping, cur: Cursor) -> List[Exception]:
-    sql = """
-    UPDATE rm_documents_t SET doc_state=NULL, updated_ts=? WHERE subject=?
-    """
-
-    now = datetime.now(tz=timezone.utc)
-
-    errors: List[Exception] = []
-
-    try:
-        cur.execute(sql, (
-            now.isoformat(),
-            data['subject'],
-        ))
+        cur.execute(sql, (data['subject'],))
     except Exception as e:
         errors.append(e)
 
@@ -201,8 +179,7 @@ class RmDocumentListBuilder(ReadModelBaseBuilder):
             EvtTypes.ORDERCONF_IMPORTED.value: on_orderconfirmation_imported,
             EvtTypes.GENERIC_INVOICE_IMPORTED.value: on_generic_invoice_imported,
             EvtTypes.GENERIC_ORDER_IMPORTED.value: on_generic_order_imported,
-            EvtTypes.DOCUMENT_VOIDED.value: on_document_voided,
-            EvtTypes.DOCUMENT_UNVOIDED.value: on_document_unvoided
+            EvtTypes.DOCUMENT_VOIDED.value: on_document_voided
         }
         super().__init__(conn_mgr, self.handlers, 'rm_documents_t', self.status_queue)
 

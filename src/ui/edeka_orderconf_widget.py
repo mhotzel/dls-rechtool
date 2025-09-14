@@ -16,15 +16,17 @@ from application.event_dispatcher import EventDispatcher
 from domain.event_factory import orderconfirmation_imported_event
 from domain.order_confirmation import OrderConfirmation, OrderConfItem
 from services.event_store.eventstore import EventStore, Event
+from services.readmodels.base_data_store import DataStore, Document
 
 
 class EdekaOrderConfirmationImportWidget(QGroupBox):
 
     statusSignal = Signal(AppEvent)
 
-    def __init__(self, parent: QWidget, event_dispatcher: EventDispatcher, evtStore: EventStore):
+    def __init__(self, parent: QWidget, event_dispatcher: EventDispatcher, evtStore: EventStore, data_store: DataStore):
         super().__init__('EDEKA-Bestellbestätigungen importieren', parent)
         self.evtStore = evtStore
+        self.data_store = data_store
         self.evt_dispatcher = event_dispatcher
         self.suppl_id = '1'
         self.threadPool = QThreadPool(self)
@@ -82,16 +84,19 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
     def start_import(self):
         """Startet den Import der Bestellbestätigungen"""
 
+        docs=self.data_store.get_doc_list()
+
         thread = ImportWorker(
             self.run_import,
             filename=self.txt_selected_file.text(),
             evtStore=self.evtStore,
+            docs=docs,
             statusSignal=self.statusSignal
         )
 
         self.threadPool.start(thread)
 
-    def run_import(self, filename: str) -> None:
+    def run_import(self, docs: List[Document], filename: str) -> None:
         wb: Workbook = load_workbook(
             filename,
             read_only=True, data_only=True)
@@ -136,7 +141,11 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
             for key, orderconf in order_conf_map.items():
                 evt = orderconfirmation_imported_event(orderconf)
 
-                self.evtStore.add_event(evt=evt, expected_version=-1)
+                for doc in docs:
+                    if doc.subject == evt.subject:
+                        raise ValueError(f"Das Dokument '{evt.subject}' wurde bereits eingelesen")
+
+                self.evtStore.add_event(evt=evt, expected_version=None)
                 self.statusSignal.emit(
                     AppEvent(
                         evt_lvl=LogLevel.INFO,
@@ -165,12 +174,13 @@ class EdekaOrderConfirmationImportWidget(QGroupBox):
 
 class ImportWorker(QRunnable):
 
-    def __init__(self, fn, filename: str, evtStore: EventStore, statusSignal: Signal):
+    def __init__(self, fn, filename: str, evtStore: EventStore, docs: List[Document], statusSignal: Signal):
         super().__init__()
         self.fn = fn
         self.evtStore = evtStore
+        self.docs = docs
         self.filename = filename
         self.statusSignal = statusSignal
 
     def run(self) -> None:
-        self.fn(self.filename)
+        self.fn(self.docs, self.filename)

@@ -45,7 +45,7 @@ class SqliteDataStore(DataStore):
 
         return result
 
-    def get_doc_list(self):
+    def get_doc_list(self) -> List[Document]:
         """Liefert die Liste aller Dokumente"""
 
         sql = """

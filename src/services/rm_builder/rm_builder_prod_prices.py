@@ -15,12 +15,13 @@ def on_invoice_imported(data: Mapping, cur: Cursor) -> List[Exception]:
     """
     sql = """
     INSERT INTO rm_product_list_t 
-    (suppl_id, suppl_name, issue_type, issue_id, issue_date, seller_assigned_id, global_id, name, price, updated_ts) 
+    (subject, suppl_id, suppl_name, issue_type, issue_id, issue_date, seller_assigned_id, global_id, name, price, updated_ts) 
     VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT DO NOTHING
     """
 
+    subject = data['subject']
     suppl_id = data['invoice_seller_id']
     suppl_name = data['invoice_seller_name']
     issue_type = 'invoice'
@@ -38,7 +39,7 @@ def on_invoice_imported(data: Mapping, cur: Cursor) -> List[Exception]:
         name = pos['pos_name']
 
         try:
-            cur.execute(sql, (suppl_id, suppl_name, issue_type, issue_id,
+            cur.execute(sql, (subject, suppl_id, suppl_name, issue_type, issue_id,
                               issue_date, seller_assigned_id, global_id, name, price, updated_ts))
         except Exception as e:
             errors.append(e)
@@ -53,12 +54,13 @@ def on_orderconfirmation_imported(data: Mapping, cur: Cursor) -> List[Exception]
     """
     sql = """
     INSERT INTO rm_product_list_t 
-    (suppl_id, suppl_name, issue_type, issue_id, issue_date, seller_assigned_id, global_id, name, price, updated_ts) 
+    (subject, suppl_id, suppl_name, issue_type, issue_id, issue_date, seller_assigned_id, global_id, name, price, updated_ts) 
     VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT DO NOTHING
     """
 
+    subject = data['subject']
     suppl_id = data['suppl_id']
     suppl_name = data['suppl_name']
     issue_type = 'order_confirmation'
@@ -76,7 +78,7 @@ def on_orderconfirmation_imported(data: Mapping, cur: Cursor) -> List[Exception]
         name = pos['name']
 
         try:
-            cur.execute(sql, (suppl_id, suppl_name, issue_type, issue_id,
+            cur.execute(sql, (subject, suppl_id, suppl_name, issue_type, issue_id,
                               issue_date, seller_assigned_id, global_id, name, price, updated_ts))
         except Exception as e:
             errors.append(e)
@@ -91,12 +93,13 @@ def on_generic_invoice_imported(data: Mapping, cur: Cursor) -> List[Exception]:
     """
     sql = """
     INSERT INTO rm_product_list_t 
-    (suppl_id, suppl_name, issue_type, issue_id, issue_date, seller_assigned_id, global_id, name, price, updated_ts) 
+    (subject, suppl_id, suppl_name, issue_type, issue_id, issue_date, seller_assigned_id, global_id, name, price, updated_ts) 
     VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT DO NOTHING
     """
 
+    subject = data['subject']
     suppl_id = data['suppl_id']
     suppl_name = data['suppl_name']
     issue_type = 'invoice'
@@ -114,7 +117,7 @@ def on_generic_invoice_imported(data: Mapping, cur: Cursor) -> List[Exception]:
         name = pos['name']
 
         try:
-            cur.execute(sql, (suppl_id, suppl_name, issue_type, invoice_id,
+            cur.execute(sql, (subject, suppl_id, suppl_name, issue_type, invoice_id,
                               invoice_date, seller_assigned_id, global_id, name, price, updated_ts))
         except Exception as e:
             errors.append(e)
@@ -128,12 +131,13 @@ def on_generic_order_imported(data: Mapping, cur: Cursor) -> List[Exception]:
     """
     sql = """
     INSERT INTO rm_product_list_t 
-    (suppl_id, suppl_name, issue_type, issue_id, issue_date, seller_assigned_id, global_id, name, price, updated_ts) 
+    (subject, suppl_id, suppl_name, issue_type, issue_id, issue_date, seller_assigned_id, global_id, name, price, updated_ts) 
     VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT DO NOTHING
     """
 
+    subject = data['subject']
     suppl_id = data['suppl_id']
     suppl_name = data['suppl_name']
     issue_type = 'order'
@@ -150,13 +154,28 @@ def on_generic_order_imported(data: Mapping, cur: Cursor) -> List[Exception]:
         name = pos['name']
 
         try:
-            cur.execute(sql, (suppl_id, suppl_name, issue_type, order_id,
+            cur.execute(sql, (subject, suppl_id, suppl_name, issue_type, order_id,
                           order_date, seller_assigned_id, global_id, name, price, updated_ts))
         except Exception as e:
             errors.append(e)
 
     return errors
 
+def on_document_voided(data: Mapping, cur: Cursor) -> List[Exception]:
+    sql = """
+    DELETE FROM rm_product_list_t WHERE subject=?
+    """
+
+    now = datetime.now(tz=timezone.utc)
+
+    errors: List[Exception] = []
+
+    try:
+        cur.execute(sql, (data['subject'],))
+    except Exception as e:
+        errors.append(e)
+
+    return errors
 
 class RmProductListBuilder(ReadModelBaseBuilder):
     """
@@ -173,7 +192,8 @@ class RmProductListBuilder(ReadModelBaseBuilder):
                 EvtTypes.INVOICE_IMPORTED.value: on_invoice_imported,
                 EvtTypes.ORDERCONF_IMPORTED.value: on_orderconfirmation_imported,
                 EvtTypes.GENERIC_INVOICE_IMPORTED.value: on_generic_invoice_imported,
-                EvtTypes.GENERIC_ORDER_IMPORTED.value: on_generic_order_imported
+                EvtTypes.GENERIC_ORDER_IMPORTED.value: on_generic_order_imported,
+                EvtTypes.DOCUMENT_VOIDED.value: on_document_voided
             },
             target_table='rm_product_list_t',
             status_queue=status_queue
@@ -188,6 +208,7 @@ class RmProductListBuilder(ReadModelBaseBuilder):
         SQL = [
             """
         CREATE TABLE IF NOT EXISTS rm_product_list_t (
+            subject TEXT NOT NULL,
             suppl_id TEXT NOT NULL,
             suppl_name TEXT NOT NULL,
             issue_type TEXT NOT NULL,

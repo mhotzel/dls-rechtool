@@ -5,6 +5,14 @@ from typing import List, Protocol
 
 from pydantic import BaseModel
 
+class Document(BaseModel):
+    subject: str
+    doc_date: date
+    doc_type: str
+    doc_id: str
+    suppl_id: str
+    suppl_name: str
+    doc_state: str | None = None
 
 class Product(BaseModel):
     """Ein Artikel samt Herkunft"""
@@ -27,6 +35,6 @@ class DataStore(Protocol):
         ...
 
     @abstractmethod
-    def get_doc_list(self):
+    def get_doc_list(self) -> List[Document]:
         """Liefert die Liste aller Dokumente"""
         ...

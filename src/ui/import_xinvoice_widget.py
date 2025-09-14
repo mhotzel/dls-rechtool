@@ -14,6 +14,7 @@ from domain.supplier_reader import SupplierReader
 from domain.event_factory import Supplier
 from domain.zugferd_invoice import ZugferdInvoiceDocument
 from services.event_store.eventstore import EventStore
+from services.readmodels.base_data_store import DataStore
 from ui.invoice_positions_widget import InvoicePositionsWidget
 
 
@@ -25,9 +26,10 @@ class InvoiceAlreadyImportedException(Exception):
 class ImportEInvoice(QGroupBox):
     """Oberflaeche zur Steuerung des Imports von E-Rechnungen"""
 
-    def __init__(self, parent: QWidget, event_dispatcher: EventDispatcher, evtStore: EventStore):
+    def __init__(self, parent: QWidget, event_dispatcher: EventDispatcher, evtStore: EventStore, data_store: DataStore):
         super().__init__(parent=parent, title='Rechnungsbearbeitung')
         self.evtStore: EventStore = evtStore
+        self.data_store: DataStore = data_store
         self.event_dispatcher: EventDispatcher = event_dispatcher
         self.supplierReader = SupplierReader(self.evtStore)
         self.invoice_doc: ZugferdInvoiceDocument = None
@@ -144,14 +146,14 @@ class ImportEInvoice(QGroupBox):
     def save_invoice(self):
         """Speichert die Rechnungspositionen in der Datenbank"""
         supplier_id: str = str(self.cmbSupplier.currentData())
-        subject = f"invoice-{supplier_id}-{self.txtFldInvoiceNr.text()}"
 
         try:
-            events = self.evtStore.readEventsBySubject(subject=subject, limit=1)
-            event_to_save = ImportXInvoiceCmd(
-                events=events, invoice=self.invoice_doc.invoice, supplier_id=supplier_id)()
+            cmd = ImportXInvoiceCmd(data_store=self.data_store, 
+                invoice=self.invoice_doc.invoice, supplier_id=supplier_id)
 
-            self.evtStore.add_event(evt=event_to_save, expected_version=-1)
+            event_to_save = cmd.save_doc()
+
+            self.evtStore.add_event(evt=event_to_save, expected_version=None)
             self.event_dispatcher.send(
                 AppEvent(
                     evt_lvl=LogLevel.INFO,
@@ -164,6 +166,6 @@ class ImportEInvoice(QGroupBox):
                 AppEvent(
                     evt_lvl=LogLevel.CRITICAL,
                     evt_type='status-message',
-                    evt_data=f"Rechnungsdaten '{subject}' wurden nicht gespeichert: {e}"
+                    evt_data=f"Rechnungsdaten wurden nicht gespeichert: {e}"
                 )
             )

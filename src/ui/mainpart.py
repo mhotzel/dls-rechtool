@@ -46,7 +46,7 @@ class MainPart(QStackedWidget):
         self.addWidget(self.emptyWidget)
 
         self.invoiceWidget = ImportEInvoice(
-            self, self.event_dispatcher, self.evtStore)
+            self, self.event_dispatcher, self.evtStore, self.dataStore)
         self.addWidget(self.invoiceWidget)
 
         self.suppliersEditor = SuppliersEditorWidget(
@@ -54,15 +54,15 @@ class MainPart(QStackedWidget):
         self.addWidget(self.suppliersEditor)
 
         self.edeka_orderconf_widget = EdekaOrderConfirmationImportWidget(
-            self, self.event_dispatcher, self.evtStore)
+            self, self.event_dispatcher, self.evtStore, data_store=self.dataStore)
         self.addWidget(self.edeka_orderconf_widget)
 
         self.paxan_orderconf_widget = PaxanOrderConfirmationImportWidget(
-            self, self.event_dispatcher, self.evtStore)
+            self, self.event_dispatcher, self.evtStore, dataStore=self.dataStore)
         self.addWidget(self.paxan_orderconf_widget)
 
         self.manual_positions_widget = ManualPositionEditorWidget(
-            self, self.event_dispatcher, self.evtStore)
+            self, self.event_dispatcher, self.evtStore, self.dataStore)
         self.addWidget(self.manual_positions_widget)
 
         self.export_prod_list_widget = ProdListExportWidget(self, self.event_dispatcher, self.dataStore)

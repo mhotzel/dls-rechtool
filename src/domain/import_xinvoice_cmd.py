@@ -1,27 +1,31 @@
 
-from typing import Sequence
+from typing import List, Sequence
 import uuid
 
 from domain.already_imported_exception import AlreadyImportedException
-from domain.event_factory import invoice_imported_event
+from domain.event_factory import build_stream_id, invoice_imported_event
 from domain.fakturx_invoice import FakturXInvoice
 from domain.xinvoice import InvoiceItem, Invoice
 from services.event_store.event import Event
+from services.readmodels.base_data_store import DataStore, Document
 
 
 class ImportXInvoiceCmd:
     """Importiert die Daten einer X-Rechnung"""
 
-    def __init__(self, events: Sequence[Event], invoice: FakturXInvoice, supplier_id: str):
-        self.subject = f"invoice-{supplier_id}-{invoice.invoiceNumber}"
+    def __init__(self, data_store: DataStore, invoice: FakturXInvoice, supplier_id: str):
+        self.subject = build_stream_id(
+            'invoices', supplier_id, invoice.invoiceNumber)
         self.supplier_id = supplier_id
         self.invoice = invoice
-        if len(events) > 0:
-            raise AlreadyImportedException(
-                f"invoice with invoice-nr '{invoice.invoiceNumber}' (subject '{self.subject}') was already imported")
+        self.data_store = data_store
 
-    def __call__(self) -> Event:
-        
+    def save_doc(self) -> Event:
+
+        if self._find_doc(self.subject):
+            raise AlreadyImportedException(
+                f"Das Dokument mit dem Subject '{self.subject}' wurde bereits eingelesen")
+
         invoice_result = Invoice(
             invoice_id=self.invoice.invoiceNumber,
             invoice_date=self.invoice.invoiceDate,
@@ -60,3 +64,10 @@ class ImportXInvoiceCmd:
         evt = invoice_imported_event(self.supplier_id, invoice_result)
         return evt
 
+    def _find_doc(self, subject) -> bool:
+        """Prüft, ob ein Dokument mit dem angegebenen Subject schon vorhanden ist"""
+        docs: List[Document] = self.data_store.get_doc_list()
+        for doc in docs:
+            if doc.subject == subject:
+                return True
+        return False

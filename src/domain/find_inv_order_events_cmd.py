@@ -9,17 +9,7 @@ from domain.order_confirmation import OrderConfirmation
 from domain.xinvoice import Invoice
 from services.event_store.event import Event, EvtTypes
 from services.event_store.eventstore import EventStore
-from services.readmodels.base_data_store import DataStore
-
-
-class Document(BaseModel):
-    subject: str
-    doc_date: date
-    doc_type: str
-    doc_id: str
-    suppl_id: str
-    suppl_name: str
-    doc_state: str | None = None
+from services.readmodels.base_data_store import DataStore, Document
 
 
 class FindInvoiceAndOrderEventsCmd:
